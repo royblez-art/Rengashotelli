@@ -5,185 +5,332 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Rengashotelli – Web</title>
   <style>
-    body { font-family: system-ui, Arial; margin: 20px; max-width: 980px; }
-    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    input, button, select { padding:10px; font-size:16px; }
-    button { cursor:pointer; }
-    table { width:100%; border-collapse:collapse; margin-top:12px; }
-    th, td { border:1px solid #ddd; padding:10px; text-align:left; }
-    th { background:#f6f6f6; }
-    .card { border:1px solid #ddd; padding:14px; border-radius:10px; margin: 12px 0; }
-    .muted { opacity:0.75; }
-    .error { color:#b00020; }
-    .ok { color:#1b5e20; }
+    :root{
+      --bg:#edf2f7;
+      --card:#ffffff;
+      --primary:#0E7AFE;
+      --accent:#FF9F1C;
+      --text:#1f2937;
+      --sub:#4b5563;
+      --border:#d7dde6;
+      --danger:#b00020;
+      --ok:#1b5e20;
+    }
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; background:var(--bg); color:var(--text);}
+    .wrap{max-width:1100px; margin:0 auto; padding:18px;}
+    h1{margin:8px 0 6px; font-size:40px;}
+    .muted{color:var(--sub);}
+    .card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; margin:12px 0; box-shadow:0 1px 0 rgba(0,0,0,.03);}
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+    input, button{padding:12px; font-size:16px; border-radius:12px; border:1px solid var(--border); background:#fff;}
+    input{min-width:220px}
+    button{cursor:pointer; background:#fff}
+    button.primary{background:var(--primary); color:#fff; border-color:transparent;}
+    button.ghost{background:#fff;}
+    button.danger{background:#fff; border-color:#f1b7bf; color:var(--danger);}
+    .status{padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:#fff;}
+    .status.ok{border-color:#cfe8d3; color:var(--ok);}
+    .status.err{border-color:#f1b7bf; color:var(--danger);}
+
+    table{width:100%; border-collapse:collapse; margin-top:10px; overflow:hidden; border-radius:12px;}
+    th, td{border:1px solid var(--border); padding:12px; text-align:left; vertical-align:top;}
+    th{background:#f6f7fb;}
+    tr:hover{background:#fafbff;}
+    .small{font-size:13px;}
+    .pill{display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:#fff;}
+    .right{margin-left:auto}
+
+    /* modal */
+    .overlay{position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; padding:18px;}
+    .overlay.show{display:flex;}
+    .modal{width:min(520px, 100%); background:#fff; border-radius:16px; border:1px solid var(--border); padding:14px;}
+    .modal h3{margin:6px 0 10px;}
+    .modal .row input{flex:1; min-width:0;}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:12px; padding:2px 6px; border:1px solid var(--border); border-radius:6px; background:#fff;}
   </style>
 </head>
 <body>
-  <h1>Rengashotelli – Web</h1>
-  <div class="muted">Kirjautuminen Supabase Authilla. Näyttää asiakkaat ja mahdollistaa perustoiminnot.</div>
+  <div class="wrap">
+    <h1>Rengashotelli – Web</h1>
+    <div class="muted">Kirjautuminen Supabase Authilla. Asiakkaat (customers) ja perustoiminnot.</div>
 
-  <div id="status" class="card muted">Alustetaan…</div>
+    <div id="status" class="card"><div class="status muted">Alustetaan…</div></div>
 
-  <div id="authCard" class="card" style="display:none;">
-    <h3>Kirjaudu</h3>
-    <div class="row">
-      <input id="email" type="email" placeholder="Sähköposti" />
-      <input id="password" type="password" placeholder="Salasana" />
-      <button id="btnLogin">Kirjaudu</button>
-      <button id="btnSignup" class="muted">Rekisteröi</button>
+    <div id="authCard" class="card" style="display:none;">
+      <h3>Kirjaudu</h3>
+      <div class="row">
+        <input id="email" type="email" placeholder="Sähköposti" />
+        <input id="password" type="password" placeholder="Salasana" />
+        <button id="btnLogin" class="primary">Kirjaudu</button>
+        <button id="btnSignup" class="ghost">Rekisteröi</button>
+      </div>
+      <div id="authMsg" class="status err" style="display:none; margin-top:10px;"></div>
+      <div class="muted small" style="margin-top:8px;">
+        Vinkki: jos käytät samaa tunnusta kuin Androidissa, kirjaudu sillä.
+      </div>
     </div>
-    <div class="muted" style="margin-top:8px;">
-      Rekisteröinti toimii vain jos Supabase Auth -asetukset sallii sen.
+
+    <div id="appCard" class="card" style="display:none;">
+      <div class="row">
+        <div>
+          <div><b>Käyttäjä:</b> <span id="userEmail"></span></div>
+          <div class="muted small">
+            Hotel code:
+            <input id="hotelCode" placeholder="esim. Testihotelli" style="padding:10px; margin-left:6px; min-width:220px;" />
+          </div>
+        </div>
+        <div class="right row">
+          <button id="btnRefresh">Päivitä</button>
+          <button id="btnLogout">Kirjaudu ulos</button>
+        </div>
+      </div>
+
+      <hr style="border:none; border-top:1px solid var(--border); margin:14px 0;" />
+
+      <div class="row" style="align-items:flex-end;">
+        <div>
+          <h3 style="margin:0 0 6px;">Asiakkaat</h3>
+          <div class="muted small">
+            Nopea: klikkaa riviä • Tupla: muokkaa • Pitkä: valikko
+            <span class="kbd">~550ms</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="background:#fbfcff;">
+        <div class="row">
+          <input id="newNimi" placeholder="Nimi" />
+          <input id="newPuhelin" placeholder="Puhelin" />
+          <input id="newSahkoposti" placeholder="Sähköposti (valinnainen)" />
+          <button id="btnAdd" class="primary">Lisää</button>
+        </div>
+        <div id="msg" class="status" style="display:none; margin-top:10px;"></div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Nimi</th>
+            <th>Puhelin</th>
+            <th>Sähköposti</th>
+            <th>Luotu</th>
+            <th class="small">Poistettu</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
     </div>
-    <div id="authMsg" class="error" style="margin-top:8px;"></div>
   </div>
 
-  <div id="appCard" class="card" style="display:none;">
-    <div class="row" style="justify-content:space-between;">
-      <div>
-        <div><b>Käyttäjä:</b> <span id="userEmail"></span></div>
-        <div class="muted"><b>Hotel code:</b> <input id="hotelCode" placeholder="esim. HOTEL1" style="padding:8px;" /></div>
+  <!-- Modal: actions / edit -->
+  <div id="overlay" class="overlay" aria-hidden="true">
+    <div class="modal">
+      <div class="row" style="justify-content:space-between; align-items:center;">
+        <h3 id="modalTitle" style="margin:0;">Asiakas</h3>
+        <button id="btnClose">Sulje</button>
       </div>
-      <div class="row">
-        <button id="btnRefresh">Päivitä</button>
-        <button id="btnLogout">Kirjaudu ulos</button>
+
+      <div id="modalView">
+        <div class="muted small" style="margin:10px 0 8px;">Toiminnot</div>
+        <div class="row">
+          <button id="btnEdit">Muokkaa</button>
+          <button id="btnSoftDelete" class="danger">Poista (soft)</button>
+        </div>
+        <div class="muted small" style="margin-top:10px;">
+          “Poista (soft)” asettaa <span class="kbd">poistettu=true</span>.
+        </div>
       </div>
-    </div>
 
-    <hr />
-
-    <h3>Asiakkaat</h3>
-
-    <div class="row">
-      <input id="newName" placeholder="Nimi" />
-      <input id="newPhone" placeholder="Puhelin" />
-      <button id="btnAdd">Lisää</button>
-    </div>
-
-    <div id="msg" style="margin-top:10px;"></div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Nimi</th>
-          <th>Puhelin</th>
-          <th>Luotu</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
-
-    <div class="muted" style="margin-top:10px;">
-      Taulu oletuksena: <code>customers</code> sarakkeilla <code>id</code>, <code>name</code>, <code>phone</code>, <code>hotel_code</code>, <code>created_at</code>.
-      Jos nimet eroaa, sanot vaan taulun/sarakkeiden nimet niin muutan koodin.
+      <div id="modalEdit" style="display:none;">
+        <div class="muted small" style="margin:10px 0 8px;">Muokkaus</div>
+        <div class="row">
+          <input id="editNimi" placeholder="Nimi" />
+          <input id="editPuhelin" placeholder="Puhelin" />
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <input id="editSahkoposti" placeholder="Sähköposti" />
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button id="btnSave" class="primary">Tallenna</button>
+          <button id="btnCancelEdit">Peruuta</button>
+        </div>
+      </div>
     </div>
   </div>
 
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-    // === ASETUKSET ===
-    const supabaseUrl = "https://xbxmysfxbkcrjsxjtzkz.supabase.co";
-    const supabaseAnonKey = "sb_publishable_8e1s0Fj93ydy900tLpAwHQ_BAfVDGUq"; // <- liitä sb_publishable_... tähän
+    const SUPABASE_URL = "https://xbxmysfxbkcrjsxjtzkz.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_8e1s0Fj93ydy900tLpAwHQ_BAfVDGUq";
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const $ = (id) => document.getElementById(id);
 
-    const status = $("status");
+    const statusCard = $("status");
     const authCard = $("authCard");
-    const appCard = $("appCard");
-    const authMsg = $("authMsg");
-    const msg = $("msg");
-    const tbody = $("tbody");
+    const appCard  = $("appCard");
+    const authMsg  = $("authMsg");
+    const msg      = $("msg");
+    const tbody    = $("tbody");
 
-    function setStatus(text, cls="muted") {
-      status.className = "card " + cls;
-      status.textContent = text;
+    const overlay  = $("overlay");
+    const modalTitle = $("modalTitle");
+    const modalView  = $("modalView");
+    const modalEdit  = $("modalEdit");
+
+    let selectedRow = null; // current customer row object
+
+    function setStatus(text, kind="muted"){
+      statusCard.innerHTML = `<div class="status ${kind}">${escapeHtml(text)}</div>`;
     }
-
-    function showAuth(message="") {
+    function showMsg(text, kind="ok"){
+      msg.style.display = "";
+      msg.className = "status " + (kind === "err" ? "err" : "ok");
+      msg.textContent = text;
+      setTimeout(() => { msg.style.display="none"; }, 3500);
+    }
+    function showAuth(message=""){
       authCard.style.display = "";
       appCard.style.display = "none";
-      authMsg.textContent = message;
+      if(message){
+        authMsg.style.display = "";
+        authMsg.textContent = message;
+      } else {
+        authMsg.style.display = "none";
+        authMsg.textContent = "";
+      }
     }
-
-    function showApp(user) {
+    function showApp(user){
       authCard.style.display = "none";
       appCard.style.display = "";
       $("userEmail").textContent = user?.email ?? "";
     }
 
-    function setMsg(text, ok=true) {
-      msg.className = ok ? "ok" : "error";
-      msg.textContent = text;
-      setTimeout(() => { msg.textContent = ""; msg.className = ""; }, 4000);
-    }
+    // Persist hotel_code like AsyncStorage
+    const HOTEL_KEY = "rengashotelli_hotel_code";
+    $("hotelCode").value = localStorage.getItem(HOTEL_KEY) || "";
+    $("hotelCode").addEventListener("input", () => {
+      localStorage.setItem(HOTEL_KEY, $("hotelCode").value.trim());
+    });
 
-    async function loadCustomers() {
-      const hotelCode = $("hotelCode").value.trim();
-      if (!hotelCode) {
+    async function loadCustomers(){
+      const hotel_code = $("hotelCode").value.trim();
+      if(!hotel_code){
         tbody.innerHTML = "";
-        setMsg("Anna hotel code (esim. HOTEL1).", false);
+        showMsg("Anna hotel code.", "err");
         return;
       }
 
+      // Schema from your SUPABASE_SQL.txt:
+      // customers: id, hotel_code, nimi, puhelin, sahkoposti, poistettu, created_at, paivitetty, ...
       const { data, error } = await supabase
         .from("customers")
-        .select("id,name,phone,created_at")
-        .eq("hotel_code", hotelCode)
-        .order("created_at", { ascending: false });
+        .select("id,nimi,puhelin,sahkoposti,poistettu,created_at,paivitetty")
+        .eq("hotel_code", hotel_code)
+        .order("created_at", { ascending:false });
 
-      if (error) {
-        setMsg("Haku epäonnistui: " + error.message, false);
+      if(error){
         tbody.innerHTML = "";
+        showMsg("Haku epäonnistui: " + error.message, "err");
         return;
       }
 
       tbody.innerHTML = (data ?? []).map(row => `
-        <tr>
-          <td>${escapeHtml(row.name ?? "")}</td>
-          <td>${escapeHtml(row.phone ?? "")}</td>
-          <td>${row.created_at ? new Date(row.created_at).toLocaleString("fi-FI") : ""}</td>
-          <td><button data-del="${row.id}">Poista</button></td>
+        <tr data-id="${row.id}">
+          <td><b>${escapeHtml(row.nimi ?? "")}</b></td>
+          <td>${escapeHtml(row.puhelin ?? "")}</td>
+          <td>${escapeHtml(row.sahkoposti ?? "")}</td>
+          <td class="small">${row.created_at ? new Date(row.created_at).toLocaleString("fi-FI") : ""}</td>
+          <td class="small">${row.poistettu ? `<span class="pill">kyllä</span>` : ""}</td>
         </tr>
       `).join("");
 
-      // bind delete buttons
-      [...document.querySelectorAll("button[data-del]")].forEach(btn => {
-        btn.onclick = async () => {
-          const id = btn.getAttribute("data-del");
-          if (!confirm("Poistetaanko asiakas?")) return;
-
-          const { error } = await supabase
-            .from("customers")
-            .delete()
-            .eq("id", id);
-
-          if (error) return setMsg("Poisto epäonnistui: " + error.message, false);
-          setMsg("Poistettu.");
-          await loadCustomers();
-        };
-      });
+      bindRowGestures(data ?? []);
     }
 
-    $("btnAdd").onclick = async () => {
-      const hotelCode = $("hotelCode").value.trim();
-      const name = $("newName").value.trim();
-      const phone = $("newPhone").value.trim();
-      if (!hotelCode) return setMsg("Anna hotel code.", false);
-      if (!name) return setMsg("Anna nimi.", false);
+    function openModal(kind){
+      overlay.classList.add("show");
+      overlay.setAttribute("aria-hidden","false");
+      if(kind === "edit"){
+        modalView.style.display = "none";
+        modalEdit.style.display = "";
+        $("editNimi").value = selectedRow?.nimi ?? "";
+        $("editPuhelin").value = selectedRow?.puhelin ?? "";
+        $("editSahkoposti").value = selectedRow?.sahkoposti ?? "";
+      } else {
+        modalView.style.display = "";
+        modalEdit.style.display = "none";
+      }
+      modalTitle.textContent = selectedRow?.nimi ? `Asiakas: ${selectedRow.nimi}` : "Asiakas";
+    }
+    function closeModal(){
+      overlay.classList.remove("show");
+      overlay.setAttribute("aria-hidden","true");
+      selectedRow = null;
+      modalView.style.display = "";
+      modalEdit.style.display = "none";
+    }
+
+    $("btnClose").onclick = closeModal;
+    overlay.addEventListener("click", (e) => { if(e.target === overlay) closeModal(); });
+
+    $("btnEdit").onclick = () => openModal("edit");
+    $("btnCancelEdit").onclick = () => openModal("actions");
+
+    $("btnSave").onclick = async () => {
+      const nimi = $("editNimi").value.trim();
+      const puhelin = $("editPuhelin").value.trim();
+      const sahkoposti = $("editSahkoposti").value.trim();
+      if(!selectedRow?.id) return;
 
       const { error } = await supabase
         .from("customers")
-        .insert({ hotel_code: hotelCode, name, phone });
+        .update({ nimi, puhelin, sahkoposti, paivitetty: new Date().toISOString() })
+        .eq("id", selectedRow.id);
 
-      if (error) return setMsg("Lisäys epäonnistui: " + error.message, false);
+      if(error) return showMsg("Tallennus epäonnistui: " + error.message, "err");
+      showMsg("Tallennettu.");
+      closeModal();
+      await loadCustomers();
+    };
 
-      $("newName").value = "";
-      $("newPhone").value = "";
-      setMsg("Lisätty.");
+    $("btnSoftDelete").onclick = async () => {
+      if(!selectedRow?.id) return;
+      if(!confirm("Merkitäänkö asiakas poistetuksi (poistettu=true)?")) return;
+
+      const { error } = await supabase
+        .from("customers")
+        .update({ poistettu:true, paivitetty: new Date().toISOString() })
+        .eq("id", selectedRow.id);
+
+      if(error) return showMsg("Poisto epäonnistui: " + error.message, "err");
+      showMsg("Merkitty poistetuksi.");
+      closeModal();
+      await loadCustomers();
+    };
+
+    // Add customer
+    $("btnAdd").onclick = async () => {
+      const hotel_code = $("hotelCode").value.trim();
+      const nimi = $("newNimi").value.trim();
+      const puhelin = $("newPuhelin").value.trim();
+      const sahkoposti = $("newSahkoposti").value.trim();
+
+      if(!hotel_code) return showMsg("Anna hotel code.", "err");
+      if(!nimi) return showMsg("Anna nimi.", "err");
+
+      const { error } = await supabase
+        .from("customers")
+        .insert({ hotel_code, nimi, puhelin: puhelin || null, sahkoposti: sahkoposti || null });
+
+      if(error) return showMsg("Lisäys epäonnistui: " + error.message, "err");
+
+      $("newNimi").value = "";
+      $("newPuhelin").value = "";
+      $("newSahkoposti").value = "";
+      showMsg("Lisätty.");
       await loadCustomers();
     };
 
@@ -196,28 +343,121 @@
     };
 
     $("btnLogin").onclick = async () => {
-      authMsg.textContent = "";
       const email = $("email").value.trim();
       const password = $("password").value;
+      authMsg.style.display = "none";
+      authMsg.textContent = "";
+
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return (authMsg.textContent = error.message);
+      if(error){
+        authMsg.style.display = "";
+        authMsg.textContent = error.message;
+        return;
+      }
       showApp(data.user);
       setStatus("Kirjautunut sisään.", "ok");
       await loadCustomers();
     };
 
     $("btnSignup").onclick = async () => {
-      authMsg.textContent = "";
       const email = $("email").value.trim();
       const password = $("password").value;
+      authMsg.style.display = "none";
+      authMsg.textContent = "";
+
       const { error } = await supabase.auth.signUp({ email, password });
-      if (error) return (authMsg.textContent = error.message);
+      if(error){
+        authMsg.style.display = "";
+        authMsg.textContent = error.message;
+        return;
+      }
+      authMsg.style.display = "";
+      authMsg.className = "status ok";
       authMsg.textContent = "Rekisteröity. Tarkista sähköposti, jos vahvistus on käytössä.";
     };
 
-    // auth state
+    // Gesture binding (click / double-click / long-press)
+    function bindRowGestures(rows){
+      const byId = new Map(rows.map(r => [r.id, r]));
+
+      [...tbody.querySelectorAll("tr[data-id]")].forEach(tr => {
+        const id = tr.getAttribute("data-id");
+        const row = byId.get(id);
+
+        // Web long-press: pointerdown timer
+        attachPressHandlers(tr,
+          () => { // onPress (single click)
+            selectedRow = row;
+            // Quick view = actions modal (web-friendly)
+            openModal("actions");
+          },
+          () => { // onLongPress
+            selectedRow = row;
+            openModal("actions");
+          },
+          () => { // onDoublePress
+            selectedRow = row;
+            openModal("edit");
+          }
+        );
+      });
+    }
+
+    function attachPressHandlers(el, onPress, onLongPress, onDoublePress){
+      const LONG_MS = 550;
+      let longTimer = null;
+      let longFired = false;
+
+      // double click (fast from same spot)
+      el.addEventListener("dblclick", (e) => {
+        e.preventDefault();
+        clearTimeout(longTimer);
+        longFired = true;
+        onDoublePress?.();
+      });
+
+      el.addEventListener("pointerdown", () => {
+        longFired = false;
+        clearTimeout(longTimer);
+        longTimer = setTimeout(() => {
+          longFired = true;
+          onLongPress?.();
+        }, LONG_MS);
+      });
+
+      const cancel = () => {
+        clearTimeout(longTimer);
+      };
+
+      el.addEventListener("pointerup", () => {
+        cancel();
+        // If long press already fired, do not also trigger click action
+      });
+      el.addEventListener("pointerleave", cancel);
+      el.addEventListener("pointercancel", cancel);
+
+      el.addEventListener("click", (e) => {
+        // If long-press fired, ignore the click
+        if(longFired){
+          e.preventDefault();
+          return;
+        }
+        onPress?.();
+      });
+    }
+
+    function escapeHtml(s){
+      return String(s ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    // Boot
     const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
+    if(session?.user){
       showApp(session.user);
       setStatus("Valmis.", "ok");
       await loadCustomers();
@@ -227,18 +467,9 @@
     }
 
     supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) showApp(session.user);
+      if(session?.user) showApp(session.user);
       else showAuth();
     });
-
-    function escapeHtml(s) {
-      return String(s)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
   </script>
 </body>
 </html>
