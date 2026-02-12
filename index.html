@@ -1,1058 +1,2500 @@
+
 <!doctype html>
 <html lang="fi">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Rengashotelli – Web</title>
-  <style>
-    :root{
-      --bg:#edf2f7; --card:#fff; --text:#1f2937; --sub:#4b5563;
-      --border:#d7dde6; --primary:#0E7AFE; --accent:#FF9F1C;
-      --danger:#b00020; --ok:#1b5e20; --shadow:0 1px 0 rgba(0,0,0,.03);
-      --r:14px;
-      --today:#fff6e5;
-      --now:#e8f1ff;
-    }
-    *{box-sizing:border-box}
-    body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:var(--bg); color:var(--text);}
-    .wrap{max-width:1250px; margin:0 auto; padding:16px;}
-    .topbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:10px;}
-    .brand{font-size:30px; font-weight:900;}
-    .muted{color:var(--sub)}
-    .card{background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:12px; box-shadow:var(--shadow); margin:10px 0;}
-    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
-    input, button, select, textarea{
-      font-size:15px; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:#fff;
-    }
-    textarea{min-height:84px; width:100%; resize:vertical;}
-    input{min-width:220px}
-    button{cursor:pointer}
-    button.primary{background:var(--primary); color:#fff; border-color:transparent;}
-    button.danger{border-color:#f1b7bf; color:var(--danger); background:#fff;}
-    button.ghost{background:#fff;}
-    .pill{display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:#fff; font-size:12px;}
-    .pill.blue{border-color:rgba(14,122,254,.25); background:rgba(14,122,254,.06);}
-    .pill.orange{border-color:rgba(255,159,28,.35); background:rgba(255,159,28,.10);}
-    .status{padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:#fff;}
-    .status.ok{border-color:#cfe8d3; color:var(--ok);}
-    .status.err{border-color:#f1b7bf; color:var(--danger);}
-    .tabs{display:flex; gap:8px; flex-wrap:wrap;}
-    .tab{padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:#fff;}
-    .tab.active{border-color:rgba(14,122,254,.45);}
-    .small{font-size:13px}
-    .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-    .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
-    @media (max-width: 980px){ .grid2,.grid3{grid-template-columns:1fr;} input{min-width:unset; width:100%;} }
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Rengashotelli</title>
+    <style>
+      :root {
+        --bg: #edf2f7;
+        --card: #ffffff;
+        --text: #1f2937;
+        --subtext: #4b5563;
+        --border: #e2e8f0;
+        --primary: #0e7afe;
+        --danger: #b42336;
+        --muted-bg: #f8fafc;
+        --muted-border: #dbe4ee;
+        --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+        --radius: 16px;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font-family: var(--sans);
+        color: var(--text);
+        background: radial-gradient(1200px 700px at 20% 0%, #ffffff 0%, var(--bg) 55%, #e6eef8 100%);
+      }
+      .app { min-height: 100%; display: flex; flex-direction: column; }
+      .topbar {
+        position: sticky; top: 0; z-index: 5;
+        background: rgba(237, 242, 247, 0.82);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+      }
+      .topbar-inner {
+        max-width: 1100px; margin: 0 auto; padding: 14px 16px;
+        display: flex; align-items: center; gap: 12px;
+      }
+      .brand { display: flex; flex-direction: column; line-height: 1.05; gap: 2px; min-width: 180px; }
+      .brand .title { font-weight: 900; letter-spacing: 0.2px; }
+      .brand .subtitle { font-size: 12px; color: var(--subtext); }
+      .nav { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+      .nav button {
+        appearance: none; cursor: pointer;
+        border: 1px solid var(--muted-border);
+        background: var(--muted-bg);
+        color: #334155;
+        padding: 9px 12px;
+        border-radius: 999px;
+        font-weight: 800;
+        font-size: 13px;
+      }
+      .nav button.active {
+        border-color: rgba(14, 122, 254, 0.35);
+        background: rgba(14, 122, 254, 0.09);
+        color: #0b4fb8;
+      }
+      .nav-spacer { flex: 1; }
+      .session-chip {
+        border: 1px solid var(--muted-border);
+        background: white;
+        border-radius: 999px;
+        padding: 8px 10px;
+        display: flex; gap: 8px; align-items: center;
+        max-width: 420px;
+      }
+      .session-chip .hotel { font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .session-chip .who { font-size: 12px; color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .container { width: 100%; max-width: 1100px; margin: 0 auto; padding: 16px; flex: 1; }
+      .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+      .card.pad { padding: 14px; }
+      .row { display: flex; gap: 12px; flex-wrap: wrap; }
+      .col { flex: 1; min-width: 260px; }
+      .h1 { margin: 0; font-size: 22px; font-weight: 900; }
+      .p { margin: 6px 0 0 0; color: var(--subtext); font-size: 14px; line-height: 1.35; }
+      .field { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+      .label { font-weight: 900; font-size: 12px; color: #334155; letter-spacing: 0.2px; }
+      .label .req { color: var(--danger); }
+      input, select, textarea {
+        width: 100%; border: 1px solid var(--border); border-radius: 12px;
+        padding: 10px 12px; font-size: 14px; background: #fff; outline: none;
+      }
+      textarea { min-height: 90px; resize: vertical; }
+      input:focus, select:focus, textarea:focus { border-color: rgba(14, 122, 254, 0.6); box-shadow: 0 0 0 3px rgba(14, 122, 254, 0.12); }
+      .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+      .btn {
+        appearance: none; cursor: pointer;
+        border: 1px solid rgba(14, 122, 254, 0.35);
+        background: rgba(14, 122, 254, 0.10);
+        color: #0b4fb8;
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-weight: 900;
+      }
+      .btn.primary { border-color: rgba(14, 122, 254, 0.65); background: var(--primary); color: white; }
+      .btn.ghost { border-color: var(--muted-border); background: white; color: #334155; }
+      .btn.danger { border-color: rgba(180, 35, 54, 0.35); background: rgba(180, 35, 54, 0.10); color: var(--danger); }
+      .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+      .pill {
+        display: inline-flex; gap: 8px; align-items: center;
+        border-radius: 999px; padding: 6px 10px;
+        border: 1px solid var(--muted-border);
+        background: var(--muted-bg);
+        color: #334155;
+        font-weight: 900; font-size: 12px; white-space: nowrap;
+      }
+      .pill.mono { font-family: var(--mono); font-weight: 800; }
+      .list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+      .item {
+        background: white; border: 1px solid var(--border); border-radius: 14px;
+        padding: 12px; display: flex; gap: 10px; align-items: flex-start;
+      }
+      .item .main { flex: 1; min-width: 240px; }
+      .item .title { font-weight: 900; }
+      .item .meta { margin-top: 4px; color: var(--subtext); font-size: 13px; line-height: 1.3; }
+      .item .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+      .divider { height: 1px; background: var(--border); margin: 12px 0; }
+      .muted { color: var(--subtext); }
+      .danger-text { color: var(--danger); font-weight: 900; }
 
-    table{width:100%; border-collapse:separate; border-spacing:0; border-radius:12px; overflow:hidden;}
-    th, td{border:1px solid var(--border); padding:10px; text-align:left; vertical-align:top; background:#fff;}
-    thead th{background:#f6f7fb;}
-    thead th{position:sticky; top:0; z-index:3;}
-    thead tr:nth-child(2) th{top:44px; z-index:3;}
-    tr:hover td{background:#fafbff;}
-    .todayCol{background:var(--today)!important;}
-    .nowRow td{background:var(--now)!important;}
-    .calWrap{overflow:auto; max-height:70vh; margin-top:10px; border-radius:12px;}
-    .calTime{min-width:84px; position:sticky; left:0; z-index:4; background:#f6f7fb;}
-    .calTimeCell{position:sticky; left:0; z-index:2; background:#fff;}
-    .calCell{min-width:170px;}
-    .hint{font-size:12px; color:var(--sub); margin-top:6px;}
-    .k{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; padding:2px 6px; border:1px solid var(--border); border-radius:6px; background:#fff;}
+      .toast-wrap { position: fixed; right: 12px; bottom: 12px; z-index: 50; display: flex; flex-direction: column; gap: 10px; width: min(420px, calc(100vw - 24px)); }
+      .toast { border-radius: 14px; border: 1px solid var(--border); background: white; box-shadow: var(--shadow); padding: 12px; }
+      .toast .t { font-weight: 900; }
+      .toast .m { margin-top: 4px; color: var(--subtext); font-size: 13px; line-height: 1.35; }
+      .toast.success { border-color: rgba(6, 78, 59, 0.22); background: rgba(212, 241, 223, 0.65); }
+      .toast.error { border-color: rgba(180, 35, 54, 0.25); background: rgba(255, 227, 230, 0.75); }
+      .toast.warning { border-color: rgba(154, 52, 18, 0.20); background: rgba(255, 247, 237, 0.85); }
+      .toast.info { border-color: rgba(14, 122, 254, 0.20); background: rgba(14, 122, 254, 0.06); }
 
-    /* modal */
-    .overlay{position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; padding:14px;}
-    .overlay.show{display:flex;}
-    .modal{width:min(860px, 100%); background:#fff; border-radius:16px; border:1px solid var(--border); padding:12px;}
-    .modal h3{margin:6px 0 10px;}
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="topbar">
-      <div>
-        <div class="brand">Rengashotelli</div>
-        <div class="muted small">Asiakkaat • Sisäänotto • Renkaat • Kalenteri (2 paikkaa) • Asetukset</div>
+      .modal-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); z-index: 60; display: none; align-items: flex-end; justify-content: center; padding: 14px; }
+      .modal-backdrop.open { display: flex; }
+      .modal { width: min(720px, 100%); border-radius: 18px; background: white; border: 1px solid var(--border); box-shadow: var(--shadow); padding: 14px; }
+      .modal .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+      .modal .head .ttl { font-weight: 900; font-size: 18px; }
+      .modal .head .x { appearance: none; border: 1px solid var(--muted-border); background: white; border-radius: 10px; padding: 6px 10px; font-weight: 900; cursor: pointer; }
+      .modal .body { margin-top: 10px; }
+      .modal .msg { color: var(--subtext); line-height: 1.35; }
+
+      .menu { position: relative; }
+      .menu-pop {
+        position: absolute; right: 0; top: calc(100% + 8px);
+        min-width: 220px; background: white; border: 1px solid var(--border);
+        border-radius: 14px; box-shadow: var(--shadow); padding: 8px;
+        display: none; z-index: 20;
+      }
+      .menu-pop.open { display: block; }
+      .menu-pop button {
+        width: 100%; text-align: left; border-radius: 12px;
+        border: 1px solid transparent; background: transparent;
+        padding: 10px 10px; font-weight: 900; cursor: pointer;
+        color: #0f172a;
+      }
+      .menu-pop button:hover { background: var(--muted-bg); border-color: var(--muted-border); }
+      .menu-pop button.danger { color: var(--danger); }
+
+      @media (max-width: 860px) {
+        .brand { min-width: 0; }
+        .session-chip { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="topbar">
+        <div class="topbar-inner">
+          <div class="brand">
+            <div class="title">Rengashotelli</div>
+            <div class="subtitle" id="brandSub">Web</div>
+          </div>
+          <div class="nav" id="nav" style="display:none">
+            <button data-tab="dashboard">Etusivu</button>
+            <button data-tab="worklist">Työlista</button>
+            <button data-tab="customers">Asiakkaat</button>
+            <button data-tab="rows">Rivit</button>
+            <button data-tab="calendar">Kalenteri</button>
+            <button data-tab="settings">Asetukset</button>
+          </div>
+          <div class="nav-spacer"></div>
+          <div class="session-chip" id="sessionChip" style="display:none">
+            <div class="hotel" id="chipHotel">—</div>
+            <div class="who" id="chipWho">—</div>
+          </div>
+        </div>
       </div>
+      <div class="container" id="root"></div>
+    </div>
 
-      <div class="row">
-        <input id="hotelCode" placeholder="hotel_code (esim. Testihotelli)" />
-        <button id="btnReload" class="primary">Päivitä</button>
-        <button id="btnLogout">Ulos</button>
+    <div class="toast-wrap" id="toasts"></div>
+
+    <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="head">
+          <div class="ttl" id="modalTitle"></div>
+          <button class="x" id="modalCloseBtn">Sulje</button>
+        </div>
+        <div class="body" id="modalBody"></div>
       </div>
     </div>
 
-    <div id="status" class="card"><div class="status">Alustetaan…</div></div>
+    <script>
+      // ==========================================================
+      // Config (copied from App.js)
+      // ==========================================================
+      const SUPABASE_URL = "https://xbxmysfxbkcrjsxjtzkz.supabase.co";
+      const SUPABASE_ANON_KEY = "sb_publishable_8e1s0Fj93ydy900tLpAwHQ_BAfVDGUq";
 
-    <div id="authCard" class="card" style="display:none;">
-      <h3>Kirjaudu</h3>
-      <div class="row">
-        <input id="email" type="email" placeholder="Sähköposti" />
-        <input id="password" type="password" placeholder="Salasana" />
-        <button id="btnLogin" class="primary">Kirjaudu</button>
-        <button id="btnSignup" class="ghost">Rekisteröi</button>
-      </div>
-      <div id="authMsg" class="status err" style="display:none; margin-top:10px;"></div>
-    </div>
+      // ==========================================================
+      // Helpers
+      // ==========================================================
+      const $ = (sel, root = document) => root.querySelector(sel);
+      const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+      const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
-    <div id="appCard" style="display:none;">
-      <div class="card">
-        <div class="tabs">
-          <button class="tab active" data-view="customers">Asiakkaat</button>
-          <button class="tab" data-view="intake">Sisäänotto</button>
-          <button class="tab" data-view="tires">Renkaat</button>
-          <button class="tab" data-view="calendar">Kalenteri</button>
-          <button class="tab" data-view="settings">Asetukset</button>
-          <span class="pill" id="userPill"></span>
-        </div>
-        <div class="hint">Click = avaa • Double = muokkaa • (mobiili) pitkällä painalluksella saat saman kuin click.</div>
-      </div>
-
-      <!-- Customers -->
-      <div id="view_customers" class="card">
-        <div class="row">
-          <div>
-            <div class="small muted">customers</div>
-            <div style="font-size:22px; font-weight:900;">Asiakkaat</div>
-          </div>
-          <div style="margin-left:auto" class="row">
-            <input id="custSearch" placeholder="Haku" />
-            <button id="custAdd" class="primary">Lisää</button>
-            <button id="custRefresh">Päivitä</button>
-          </div>
-        </div>
-        <div style="overflow:auto; max-height:65vh; margin-top:10px;">
-          <table>
-            <thead>
-              <tr>
-                <th>Nimi</th><th>Puhelin</th><th>Sähköposti</th><th>Luotu</th><th>Poistettu</th>
-              </tr>
-            </thead>
-            <tbody id="custTbody"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Intake -->
-      <div id="view_intake" class="card" style="display:none;">
-        <div class="row">
-          <div>
-            <div class="small muted">Uusi rengas sisään varastoon</div>
-            <div style="font-size:22px; font-weight:900;">Sisäänotto</div>
-          </div>
-          <div style="margin-left:auto" class="row">
-            <button id="intakeRefresh">Päivitä vapaat hyllyt</button>
-          </div>
-        </div>
-
-        <div class="hint">Valitse ensin asiakas (jos olemassa) → täyttää nimen/puhelimen/sähköpostin. Täytä vain rekisteri ja valitse vapaa hylly.</div>
-
-        <div class="grid2" style="margin-top:10px;">
-          <div style="grid-column:1/-1">
-            <div class="small muted">Valitse asiakas</div>
-            <input id="in_customer_pick" list="custList" placeholder="Kirjoita nimi / puhelin / sähköposti…" />
-            <datalist id="custList"></datalist>
-          </div>
-
-          <div><div class="small muted">Nimi</div><input id="in_nimi"></div>
-          <div><div class="small muted">Puhelin</div><input id="in_puhelin"></div>
-          <div><div class="small muted">Sähköposti</div><input id="in_sahkoposti"></div>
-          <div><div class="small muted">Rekisteri (täytä tämä)</div><input id="in_rekisteri" placeholder="ABC-123"></div>
-
-          <div>
-            <div class="small muted">Hyllypaikka (vain vapaat, järjestys 1A1…)</div>
-            <select id="in_hyllypaikka"></select>
-          </div>
-          <div>
-            <div class="small muted">Kausimaksu</div>
-            <select id="in_maksettu">
-              <option value="Maksettu">Maksettu</option>
-              <option value="Ei maksettu">Ei maksettu</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="row" style="margin-top:12px;">
-          <button id="in_save" class="primary">Tallenna sisäänotto</button>
-          <span class="pill" id="in_today"></span>
-          <span class="pill orange" id="in_pick_hint" style="display:none;"></span>
-        </div>
-      </div>
-
-      <!-- Tires -->
-      <div id="view_tires" class="card" style="display:none;">
-        <div class="row">
-          <div>
-            <div class="small muted">tires</div>
-            <div style="font-size:22px; font-weight:900;">Renkaat</div>
-          </div>
-          <div style="margin-left:auto" class="row">
-            <input id="tiresSearch" placeholder="Haku (rek/nimi/hylly)" />
-            <select id="tiresStatus">
-              <option value="">Kaikki tilat</option>
-              <option>Varastossa</option>
-              <option>Luovutettu</option>
-              <option>Poistettu</option>
-            </select>
-            <button id="tiresRefresh">Päivitä</button>
-          </div>
-        </div>
-        <div style="overflow:auto; max-height:65vh; margin-top:10px;">
-          <table>
-            <thead>
-              <tr>
-                <th>Rekisteri</th><th>Nimi</th><th>Puhelin</th><th>Hylly</th><th>Tila</th><th>Sisään</th><th>Kausimaksu</th>
-              </tr>
-            </thead>
-            <tbody id="tiresTbody"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Calendar -->
-      <div id="view_calendar" class="card" style="display:none;">
-        <div class="row">
-          <div>
-            <div class="small muted">appointments + calendar_blocks</div>
-            <div style="font-size:22px; font-weight:900;">Kalenteri (2 paikkaa vierekkäin)</div>
-          </div>
-          <div style="margin-left:auto" class="row">
-            <button id="calToday" class="ghost">Tämä viikko</button>
-            <input id="calWeek" type="date" />
-            <button id="calNewAppt" class="primary">Uusi varaus</button>
-            <button id="calNewBlock">Uusi blokki</button>
-            <button id="calRefresh">Päivitä</button>
-          </div>
-        </div>
-        <div class="hint" id="calHint"></div>
-
-        <div class="calWrap">
-          <table>
-            <thead id="calThead"></thead>
-            <tbody id="calTbody"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Settings -->
-      <div id="view_settings" class="card" style="display:none;">
-        <div class="row">
-          <div>
-            <div class="small muted">calendar_settings</div>
-            <div style="font-size:22px; font-weight:900;">Asetukset</div>
-          </div>
-          <div style="margin-left:auto" class="row">
-            <button id="setSave" class="primary">Tallenna</button>
-            <button id="setRefresh">Päivitä</button>
-          </div>
-        </div>
-
-        <div class="grid3" style="margin-top:10px;">
-          <div><div class="small muted">Auki</div><input id="setOpen" placeholder="08:00" /></div>
-          <div><div class="small muted">Kiinni</div><input id="setClose" placeholder="17:00" /></div>
-          <div><div class="small muted">Slot minutes</div><input id="setSlot" type="number" min="5" step="5" /></div>
-          <div><div class="small muted">Timezone</div><input id="setTz" placeholder="Europe/Helsinki" /></div>
-          <div>
-            <div class="small muted">Näytä la</div>
-            <select id="setSat"><option value="true">true</option><option value="false">false</option></select>
-          </div>
-          <div>
-            <div class="small muted">Näytä su</div>
-            <select id="setSun"><option value="true">true</option><option value="false">false</option></select>
-          </div>
-        </div>
-        <div class="hint">Kalenterin aukiolo + slot-ohjaus tulee tästä.</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- modal -->
-  <div id="overlay" class="overlay" aria-hidden="true">
-    <div class="modal">
-      <div class="row" style="justify-content:space-between;">
-        <h3 id="modalTitle" style="margin:0;">Toiminnot</h3>
-        <button id="btnClose">Sulje</button>
-      </div>
-
-      <div id="modalForm" style="margin-top:10px;">
-        <div id="formArea"></div>
-        <div class="row" style="margin-top:12px;">
-          <button id="formSave" class="primary">Tallenna</button>
-          <button id="formDelete" class="danger">Poista</button>
-          <button id="formCancel" class="ghost">Peruuta</button>
-        </div>
-        <div class="hint" id="formHint"></div>
-      </div>
-    </div>
-  </div>
-
-  <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-
-    const SUPABASE_URL = "https://xbxmysfxbkcrjsxjtzkz.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_8e1s0Fj93ydy900tLpAwHQ_BAfVDGUq";
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    const $ = (id) => document.getElementById(id);
-
-    const HOTEL_KEY = "rengashotelli_hotel_code";
-    $("hotelCode").value = localStorage.getItem(HOTEL_KEY) || "";
-    $("hotelCode").addEventListener("input", () => localStorage.setItem(HOTEL_KEY, $("hotelCode").value.trim()));
-
-    function escapeHtml(s){
-      return String(s ?? "")
-        .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;").replaceAll("'","&#039;");
-    }
-    function setStatus(text, kind=""){ $("status").innerHTML = `<div class="status ${kind}">${escapeHtml(text)}</div>`; }
-    function isoDate(d){ return new Date(d).toISOString().slice(0,10); }
-
-    // Tabs
-    function setActiveView(name){
-      document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.getAttribute("data-view") === name));
-      ["customers","intake","tires","calendar","settings"].forEach(v => {
-        $("view_"+v).style.display = (v===name) ? "" : "none";
-      });
-    }
-    document.querySelectorAll(".tab").forEach(btn => {
-      btn.onclick = async () => {
-        setActiveView(btn.getAttribute("data-view"));
-        await refreshCurrentView();
-      };
-    });
-    async function refreshCurrentView(){
-      const v = document.querySelector(".tab.active")?.getAttribute("data-view");
-      if(v==="customers") return loadCustomers();
-      if(v==="intake") return loadIntake();
-      if(v==="tires") return loadTires();
-      if(v==="calendar") return loadCalendar();
-      if(v==="settings") return loadSettings();
-    }
-    $("btnReload").onclick = refreshCurrentView;
-
-    // Auth UI
-    function showAuth(msg=""){
-      $("authCard").style.display = "";
-      $("appCard").style.display = "none";
-      if(msg){ $("authMsg").style.display=""; $("authMsg").textContent=msg; }
-      else { $("authMsg").style.display="none"; $("authMsg").textContent=""; }
-    }
-    function showApp(user){
-      $("authCard").style.display = "none";
-      $("appCard").style.display = "";
-      $("userPill").textContent = user?.email ?? "kirjautunut";
-    }
-    $("btnLogin").onclick = async () => {
-      const { error } = await supabase.auth.signInWithPassword({ email: $("email").value.trim(), password: $("password").value });
-      if(error) return showAuth(error.message);
-      await boot();
-    };
-    $("btnSignup").onclick = async () => {
-      const { error } = await supabase.auth.signUp({ email: $("email").value.trim(), password: $("password").value });
-      if(error) return showAuth(error.message);
-      showAuth("Rekisteröity. Tarkista sähköposti jos vahvistus on käytössä.");
-    };
-    $("btnLogout").onclick = async () => { await supabase.auth.signOut(); showAuth(); setStatus("Uloskirjattu."); };
-
-    // ===== Modal (edit / add) =====
-    const overlay = $("overlay");
-    let modalCtx = { table:null, mode:null, row:null }; // mode add/edit
-    function openModal(title, hint, html, ctx){
-      $("modalTitle").textContent = title;
-      $("formHint").textContent = hint || "";
-      $("formArea").innerHTML = html || "";
-      modalCtx = ctx;
-      $("formDelete").style.display = (ctx.mode==="edit") ? "" : "none";
-      overlay.classList.add("show");
-      overlay.setAttribute("aria-hidden","false");
-    }
-    function closeModal(){
-      overlay.classList.remove("show");
-      overlay.setAttribute("aria-hidden","true");
-      $("formArea").innerHTML = "";
-      modalCtx = { table:null, mode:null, row:null };
-    }
-    $("btnClose").onclick = closeModal;
-    $("formCancel").onclick = closeModal;
-    overlay.addEventListener("click",(e)=>{ if(e.target===overlay) closeModal(); });
-
-    // ===== Customers =====
-    let customers = [];
-    let customersActive = [];
-
-    async function loadCustomers(){
-      const hotel_code = $("hotelCode").value.trim();
-      if(!hotel_code){ setStatus("Anna hotel_code.", "err"); return; }
-      setStatus("Ladataan asiakkaat…");
-      const { data, error } = await supabase
-        .from("customers")
-        .select("id,nimi,puhelin,sahkoposti,poistettu,created_at")
-        .eq("hotel_code", hotel_code)
-        .order("created_at",{ascending:false});
-      if(error){ setStatus("Customers: "+error.message, "err"); return; }
-      customers = data ?? [];
-      renderCustomers();
-      setStatus("Valmis.", "ok");
-    }
-
-    function renderCustomers(){
-      const term = $("custSearch").value.trim().toLowerCase();
-      const rows = term ? customers.filter(r => JSON.stringify(r).toLowerCase().includes(term)) : customers;
-      $("custTbody").innerHTML = rows.map(r => `
-        <tr data-id="${r.id}">
-          <td><b>${escapeHtml(r.nimi||"")}</b></td>
-          <td>${escapeHtml(r.puhelin||"")}</td>
-          <td>${escapeHtml(r.sahkoposti||"")}</td>
-          <td class="small">${r.created_at ? new Date(r.created_at).toLocaleString("fi-FI") : ""}</td>
-          <td class="small">${r.poistettu ? `<span class="pill">kyllä</span>` : ""}</td>
-        </tr>
-      `).join("");
-
-      [...$("custTbody").querySelectorAll("tr[data-id]")].forEach(tr => {
-        const id = tr.getAttribute("data-id");
-        const row = customers.find(x => x.id === id);
-        tr.addEventListener("click", ()=> openCustomerEdit(row));
-        tr.addEventListener("dblclick",(e)=>{ e.preventDefault(); openCustomerEdit(row); });
-      });
-    }
-
-    function customerFormHtml(r){
-      return `
-        <div class="grid2">
-          <div><div class="small muted">Nimi</div><input id="f_nimi" value="${escapeHtml(r?.nimi||"")}"></div>
-          <div><div class="small muted">Puhelin</div><input id="f_puhelin" value="${escapeHtml(r?.puhelin||"")}"></div>
-          <div><div class="small muted">Sähköposti</div><input id="f_sahkoposti" value="${escapeHtml(r?.sahkoposti||"")}"></div>
-          <div>
-            <div class="small muted">Poistettu</div>
-            <select id="f_poistettu">
-              <option value="false" ${r?.poistettu ? "" : "selected"}>false</option>
-              <option value="true" ${r?.poistettu ? "selected" : ""}>true</option>
-            </select>
-          </div>
-        </div>
-      `;
-    }
-
-    function openCustomerAdd(){
-      openModal("Lisää asiakas","",customerFormHtml(null),{table:"customers",mode:"add",row:null});
-    }
-    function openCustomerEdit(row){
-      openModal("Muokkaa asiakas","",customerFormHtml(row),{table:"customers",mode:"edit",row});
-    }
-
-    $("custRefresh").onclick = loadCustomers;
-    $("custSearch").addEventListener("input", renderCustomers);
-    $("custAdd").onclick = openCustomerAdd;
-
-    // ===== Intake (customer pick + free locations) =====
-    const ROW_ORDER = { A:1, B:2, C:3, K:4, Y:5 };
-    function sortLocations(a,b){
-      const sa = Number(a.shelf ?? parseInt(String(a.code||"").match(/^\d+/)?.[0] || "0",10));
-      const sb = Number(b.shelf ?? parseInt(String(b.code||"").match(/^\d+/)?.[0] || "0",10));
-      if(sa !== sb) return sa - sb;
-
-      const ra = a.row_letter ?? String(a.code||"").replace(/^\d+/,"").slice(0,1);
-      const rb = b.row_letter ?? String(b.code||"").replace(/^\d+/,"").slice(0,1);
-      const roa = ROW_ORDER[ra] ?? 99;
-      const rob = ROW_ORDER[rb] ?? 99;
-      if(roa !== rob) return roa - rob;
-
-      const pa = Number(a.spot ?? parseInt(String(a.code||"").match(/[1-8]$/)?.[0] || "0",10));
-      const pb = Number(b.spot ?? parseInt(String(b.code||"").match(/[1-8]$/)?.[0] || "0",10));
-      return pa - pb;
-    }
-
-    async function loadCustomersForPicklist(){
-      const hotel_code = $("hotelCode").value.trim();
-      const { data, error } = await supabase
-        .from("customers")
-        .select("id,nimi,puhelin,sahkoposti,poistettu")
-        .eq("hotel_code", hotel_code)
-        .eq("poistettu", false)
-        .order("nimi",{ascending:true});
-      if(error){ setStatus("Customers pick: "+error.message, "err"); return; }
-      customersActive = data ?? [];
-      $("custList").innerHTML = customersActive.map(c => {
-        const label = `${c.nimi||""} • ${c.puhelin||""} • ${c.sahkoposti||""}`.trim();
-        // datalist option value must be plain
-        return `<option value="${escapeHtml(label)}"></option>`;
-      }).join("");
-    }
-
-    async function fillFreeLocations(){
-      const hotel_code = $("hotelCode").value.trim();
-
-      const { data: used, error: usedErr } = await supabase
-        .from("tires")
-        .select("hyllypaikka")
-        .eq("hotel_code", hotel_code)
-        .eq("poistettu", false);
-      if(usedErr){ setStatus("Free locations: "+usedErr.message, "err"); return; }
-      const usedSet = new Set((used ?? []).map(x => x.hyllypaikka).filter(Boolean));
-
-      const { data: loc, error: locErr } = await supabase
-        .from("locations")
-        .select("code,label,shelf,row_letter,spot")
-        .eq("hotel_code", hotel_code);
-      if(locErr){ setStatus("Locations: "+locErr.message, "err"); return; }
-
-      const free = (loc ?? []).filter(l => !usedSet.has(l.code)).sort(sortLocations);
-      $("in_hyllypaikka").innerHTML = free.map(l =>
-        `<option value="${escapeHtml(l.code)}">${escapeHtml(l.code)} - ${escapeHtml(l.label||"")}</option>`
-      ).join("");
-    }
-
-    async function loadIntake(){
-      const hotel_code = $("hotelCode").value.trim();
-      if(!hotel_code){ setStatus("Anna hotel_code.", "err"); return; }
-      $("in_today").textContent = "Sisään: " + new Date().toISOString().slice(0,10);
-      $("in_pick_hint").style.display = "none";
-      await Promise.all([loadCustomersForPicklist(), fillFreeLocations()]);
-      setStatus("Valmis.", "ok");
-    }
-    $("intakeRefresh").onclick = async () => { await fillFreeLocations(); };
-
-    $("in_customer_pick").addEventListener("change", () => {
-      const v = $("in_customer_pick").value || "";
-      const norm = v.toLowerCase();
-      const c = customersActive.find(x => {
-        const s = `${x.nimi||""} ${x.puhelin||""} ${x.sahkoposti||""}`.toLowerCase();
-        return s.includes(norm) || norm.includes((x.nimi||"").toLowerCase());
-      });
-      if(!c) return;
-      $("in_nimi").value = c.nimi || "";
-      $("in_puhelin").value = c.puhelin || "";
-      $("in_sahkoposti").value = c.sahkoposti || "";
-      $("in_rekisteri").value = "";
-      $("in_rekisteri").focus();
-      $("in_pick_hint").style.display = "";
-      $("in_pick_hint").textContent = "Asiakas täytetty. Täytä vain rekisteri.";
-    });
-
-    function clearIntake(){
-      $("in_customer_pick").value = "";
-      $("in_nimi").value = "";
-      $("in_puhelin").value = "";
-      $("in_sahkoposti").value = "";
-      $("in_rekisteri").value = "";
-      $("in_pick_hint").style.display = "none";
-    }
-
-    $("in_save").onclick = async () => {
-      const hotel_code = $("hotelCode").value.trim();
-      if(!hotel_code){ setStatus("Anna hotel_code.", "err"); return; }
-
-      const payload = {
-        hotel_code,
-        nimi: $("in_nimi").value.trim() || null,
-        puhelin: $("in_puhelin").value.trim() || null,
-        sahkoposti: $("in_sahkoposti").value.trim() || null,
-        rekisteri: $("in_rekisteri").value.trim() || null,
-        hyllypaikka: $("in_hyllypaikka").value || null,
-        sisaan_pvm: new Date().toISOString().slice(0,10),
-        tila: "Varastossa",
-        poistettu: false,
-        season_fee_paid: $("in_maksettu").value, // TEXT: "Maksettu" / "Ei maksettu"
-        paivitetty: new Date().toISOString()
-      };
-
-      if(!payload.nimi || !payload.rekisteri || !payload.hyllypaikka){
-        setStatus("Puuttuu: nimi, rekisteri tai hyllypaikka.", "err");
-        return;
+      function escapeHtml(s) {
+        return String(s || "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
       }
 
-      // extra safety: ensure location free
-      const { data: conflict, error: cErr } = await supabase
-        .from("tires")
-        .select("id,rekisteri")
-        .eq("hotel_code", hotel_code)
-        .eq("hyllypaikka", payload.hyllypaikka)
-        .eq("poistettu", false)
-        .limit(1);
-      if(cErr){ setStatus("Tarkistus: "+cErr.message, "err"); return; }
-      if(conflict?.length){
-        setStatus(`Hyllypaikka ${payload.hyllypaikka} ei ole vapaa (${conflict[0].rekisteri}). Päivitä vapaat hyllyt.`, "err");
-        return;
+      function normalizeRole(role) {
+        return String(role || "").trim().toLowerCase();
+      }
+      function isAdminRole(role) {
+        return normalizeRole(role) === "admin";
       }
 
-      const { error } = await supabase.from("tires").insert(payload);
-      if(error){ setStatus("Sisäänotto: " + error.message, "err"); return; }
-
-      clearIntake();
-      await fillFreeLocations();
-      setStatus("Sisäänotto tallennettu.", "ok");
-    };
-
-    // ===== Tires =====
-    let tires = [];
-    async function loadTires(){
-      const hotel_code = $("hotelCode").value.trim();
-      if(!hotel_code){ setStatus("Anna hotel_code.", "err"); return; }
-      setStatus("Ladataan renkaat…");
-      const { data, error } = await supabase
-        .from("tires")
-        .select("id,rekisteri,nimi,puhelin,hyllypaikka,tila,sisaan_pvm,poistettu,season_fee_paid,paivitetty")
-        .eq("hotel_code", hotel_code)
-        .order("paivitetty",{ascending:false});
-      if(error){ setStatus("Tires: "+error.message, "err"); return; }
-      tires = data ?? [];
-      renderTires();
-      setStatus("Valmis.", "ok");
-    }
-    function renderTires(){
-      const term = $("tiresSearch").value.trim().toLowerCase();
-      const st = $("tiresStatus").value.trim();
-      let rows = tires;
-      if(st) rows = rows.filter(r => String(r.tila||"") === st);
-      if(term) rows = rows.filter(r => `${r.rekisteri||""} ${r.nimi||""} ${r.hyllypaikka||""}`.toLowerCase().includes(term));
-
-      $("tiresTbody").innerHTML = rows.map(r => `
-        <tr>
-          <td><b>${escapeHtml(r.rekisteri||"")}</b></td>
-          <td>${escapeHtml(r.nimi||"")}</td>
-          <td>${escapeHtml(r.puhelin||"")}</td>
-          <td>${escapeHtml(r.hyllypaikka||"")}</td>
-          <td>${escapeHtml(r.tila||"")}</td>
-          <td class="small">${escapeHtml(r.sisaan_pvm||"")}</td>
-          <td class="small"><span class="pill">${escapeHtml(r.season_fee_paid||"")}</span></td>
-        </tr>
-      `).join("");
-    }
-    $("tiresRefresh").onclick = loadTires;
-    $("tiresSearch").addEventListener("input", renderTires);
-    $("tiresStatus").addEventListener("change", renderTires);
-
-    // ===== Settings =====
-    let calSettings = null;
-    async function loadSettings(){
-      const hotel_code = $("hotelCode").value.trim();
-      if(!hotel_code){ setStatus("Anna hotel_code.", "err"); return; }
-      setStatus("Ladataan asetukset…");
-      const { data, error } = await supabase
-        .from("calendar_settings")
-        .select("hotel_code,open_time,close_time,slot_minutes,timezone,show_saturday,show_sunday,updated_at")
-        .eq("hotel_code", hotel_code)
-        .maybeSingle();
-      if(error){ setStatus("Settings: "+error.message, "err"); return; }
-      calSettings = data ?? null;
-
-      $("setOpen").value = calSettings?.open_time ? String(calSettings.open_time).slice(0,5) : "08:00";
-      $("setClose").value = calSettings?.close_time ? String(calSettings.close_time).slice(0,5) : "17:00";
-      $("setSlot").value = calSettings?.slot_minutes ?? 20;
-      $("setTz").value = calSettings?.timezone ?? "Europe/Helsinki";
-      $("setSat").value = String(calSettings?.show_saturday ?? true);
-      $("setSun").value = String(calSettings?.show_sunday ?? true);
-
-      setStatus("Valmis.", "ok");
-    }
-
-    $("setRefresh").onclick = loadSettings;
-    $("setSave").onclick = async () => {
-      const hotel_code = $("hotelCode").value.trim();
-      if(!hotel_code){ setStatus("Anna hotel_code.", "err"); return; }
-      const payload = {
-        hotel_code,
-        open_time: ($("setOpen").value || "08:00") + ":00",
-        close_time: ($("setClose").value || "17:00") + ":00",
-        slot_minutes: Number($("setSlot").value || 20),
-        timezone: $("setTz").value || "Europe/Helsinki",
-        show_saturday: $("setSat").value === "true",
-        show_sunday: $("setSun").value === "true",
-        updated_at: new Date().toISOString()
-      };
-      setStatus("Tallennetaan asetukset…");
-      const { error } = await supabase.from("calendar_settings").upsert(payload);
-      if(error){ setStatus("Save settings: "+error.message, "err"); return; }
-      setStatus("Tallennettu.", "ok");
-      await loadSettings();
-    };
-
-    // ===== Calendar (both bays side-by-side + current week + highlight today) =====
-    let appts = [];
-    let blocks = [];
-    function startOfWeekMonday(date){
-      const d = new Date(date);
-      const day = (d.getDay()+6)%7; // Mon=0
-      d.setHours(0,0,0,0);
-      d.setDate(d.getDate() - day);
-      return d;
-    }
-    function addDays(d, n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
-    function pad2(n){ return String(n).padStart(2,"0"); }
-    function timeToMinutes(hhmm){
-      const [h,m] = String(hhmm||"00:00").slice(0,5).split(":").map(Number);
-      return (h*60)+(m||0);
-    }
-    function minutesToHHMM(min){
-      const h = Math.floor(min/60);
-      const m = min%60;
-      return `${pad2(h)}:${pad2(m)}`;
-    }
-    function sameDay(ts, dayDate){
-      const d = new Date(ts);
-      return d.getFullYear()===dayDate.getFullYear() && d.getMonth()===dayDate.getMonth() && d.getDate()===dayDate.getDate();
-    }
-    function startMinute(ts){
-      const d = new Date(ts);
-      return d.getHours()*60 + d.getMinutes();
-    }
-
-    function setCalendarToCurrentWeek(){
-      const w = startOfWeekMonday(new Date());
-      $("calWeek").value = isoDate(w);
-    }
-    $("calToday").onclick = async () => { setCalendarToCurrentWeek(); await loadCalendar(); };
-    setCalendarToCurrentWeek();
-
-    $("calRefresh").onclick = loadCalendar;
-    $("calWeek").addEventListener("change", loadCalendar);
-
-    function apptFormHtml(r, startIso, endIso, bayDefault){
-      const bay = bayDefault ?? r?.bay ?? 1;
-      return `
-        <div class="grid2">
-          <div><div class="small muted">Alku (ISO)</div><input id="f_start_ts" value="${escapeHtml(startIso || r?.start_ts || "")}"></div>
-          <div><div class="small muted">Loppu (ISO)</div><input id="f_end_ts" value="${escapeHtml(endIso || r?.end_ts || "")}"></div>
-
-          <div><div class="small muted">Rekisteri</div><input id="f_plate" value="${escapeHtml(r?.plate ?? "")}" placeholder="ABC-123"></div>
-          <div><div class="small muted">Paikka (bay)</div><input id="f_bay" type="number" min="1" max="2" value="${escapeHtml(bay)}"></div>
-
-          <div><div class="small muted">Asiakas</div><input id="f_customer_name" value="${escapeHtml(r?.customer_name ?? "")}"></div>
-          <div><div class="small muted">Puhelin</div><input id="f_phone" value="${escapeHtml(r?.phone ?? "")}"></div>
-
-          <div><div class="small muted">Status</div><input id="f_status" value="${escapeHtml(r?.status ?? "Vahvistettu")}"></div>
-          <div class="hint" style="grid-column:1/-1">
-            Kun tallennat, rekisteriä verrataan varastoon (<span class="k">tires.rekisteri</span>). Jos löytyy, web tarjoaa nimen/puhelimen täyttöä.
-          </div>
-
-          <div style="grid-column:1/-1"><div class="small muted">Muistiinpanot</div><textarea id="f_notes">${escapeHtml(r?.notes ?? "")}</textarea></div>
-        </div>
-      `;
-    }
-
-    function blockFormHtml(r, startIso, endIso){
-      return `
-        <div class="grid2">
-          <div><div class="small muted">Alku (ISO)</div><input id="f_start_ts" value="${escapeHtml(startIso || r?.start_ts || "")}"></div>
-          <div><div class="small muted">Loppu (ISO)</div><input id="f_end_ts" value="${escapeHtml(endIso || r?.end_ts || "")}"></div>
-          <div><div class="small muted">Kind</div><input id="f_kind" value="${escapeHtml(r?.kind ?? "tauko")}"></div>
-          <div><div class="small muted">Title</div><input id="f_title" value="${escapeHtml(r?.title ?? "")}"></div>
-          <div style="grid-column:1/-1"><div class="small muted">Notes</div><textarea id="f_notes">${escapeHtml(r?.notes ?? "")}</textarea></div>
-        </div>
-      `;
-    }
-
-    function openApptAddAt(date, hhmm, bay){
-      const [h,m]=hhmm.split(":").map(Number);
-      const start = new Date(date); start.setHours(h,m,0,0);
-      const slot = Number($("setSlot").value || 20);
-      const end = new Date(start); end.setMinutes(end.getMinutes()+slot);
-      openModal("Uusi varaus","",apptFormHtml(null, start.toISOString(), end.toISOString(), bay),{table:"appointments",mode:"add",row:null});
-      setTimeout(()=>{ $("f_plate")?.focus(); },0);
-    }
-    function openApptEdit(row){
-      openModal("Muokkaa varaus","",apptFormHtml(row),{table:"appointments",mode:"edit",row});
-    }
-    function openBlockAddDefault(){
-      const now = new Date();
-      now.setMinutes(Math.ceil(now.getMinutes()/20)*20,0,0);
-      const end = new Date(now); end.setMinutes(end.getMinutes()+Number($("setSlot").value||20));
-      openModal("Uusi blokki","",blockFormHtml(null, now.toISOString(), end.toISOString()),{table:"calendar_blocks",mode:"add",row:null});
-    }
-    function openBlockEdit(row){
-      openModal("Muokkaa blokki","",blockFormHtml(row),{table:"calendar_blocks",mode:"edit",row});
-    }
-
-    $("calNewAppt").onclick = () => {
-      const weekStart = startOfWeekMonday(new Date($("calWeek").value || new Date()));
-      openApptAddAt(weekStart, ($("setOpen").value||"08:00"), 1);
-    };
-    $("calNewBlock").onclick = openBlockAddDefault;
-
-    async function loadCalendar(){
-      const hotel_code = $("hotelCode").value.trim();
-      if(!hotel_code){ setStatus("Anna hotel_code.", "err"); return; }
-
-      await loadSettings().catch(()=>{});
-
-      const openHHMM = $("setOpen").value || "08:00";
-      const closeHHMM = $("setClose").value || "17:00";
-      const slotMin = Number($("setSlot").value || 20);
-
-      const weekStart = startOfWeekMonday(new Date($("calWeek").value || new Date()));
-      $("calWeek").value = isoDate(weekStart);
-
-      const showSat = $("setSat").value === "true";
-      const showSun = $("setSun").value === "true";
-      const days = [0,1,2,3,4,5,6].filter(d => (d<5) || (d===5 && showSat) || (d===6 && showSun));
-
-      const rangeStart = new Date(weekStart); rangeStart.setHours(0,0,0,0);
-      const rangeEnd = addDays(rangeStart, 7);
-
-      setStatus("Ladataan kalenteri…");
-
-      const [{data:aData, error:aErr},{data:bData, error:bErr}] = await Promise.all([
-        supabase.from("appointments")
-          .select("id,hotel_code,start_ts,end_ts,customer_name,phone,plate,notes,status,bay")
-          .eq("hotel_code", hotel_code)
-          .in("bay", [1,2])
-          .gte("start_ts", rangeStart.toISOString())
-          .lt("start_ts", rangeEnd.toISOString())
-          .order("start_ts",{ascending:true}),
-        supabase.from("calendar_blocks")
-          .select("id,hotel_code,start_ts,end_ts,kind,title,notes")
-          .eq("hotel_code", hotel_code)
-          .gte("start_ts", rangeStart.toISOString())
-          .lt("start_ts", rangeEnd.toISOString())
-          .order("start_ts",{ascending:true})
-      ]);
-
-      if(aErr){ setStatus("Appointments: "+aErr.message, "err"); return; }
-      if(bErr){ setStatus("Blocks: "+bErr.message, "err"); return; }
-
-      appts = aData ?? [];
-      blocks = bData ?? [];
-
-      const dayNames = ["Ma","Ti","Ke","To","Pe","La","Su"];
-      const today = new Date(); today.setHours(0,0,0,0);
-
-      $("calThead").innerHTML = `
-        <tr>
-          <th class="calTime" rowspan="2">Aika</th>
-          ${days.map(d => {
-            const date = addDays(weekStart, d);
-            const isToday = date.getTime() === today.getTime();
-            return `<th class="${isToday ? "todayCol":""}" colspan="2">
-              ${dayNames[d]} <div class="small muted">${date.toLocaleDateString("fi-FI")}</div>
-            </th>`;
-          }).join("")}
-        </tr>
-        <tr>
-          ${days.map(d => {
-            const date = addDays(weekStart, d);
-            const isToday = date.getTime() === today.getTime();
-            return `<th class="calCell ${isToday ? "todayCol":""}">Paikka 1</th><th class="calCell ${isToday ? "todayCol":""}">Paikka 2</th>`;
-          }).join("")}
-        </tr>
-      `;
-
-      const openMin = timeToMinutes(openHHMM);
-      const closeMin = timeToMinutes(closeHHMM);
-      const slots = [];
-      for(let m=openMin; m<closeMin; m+=slotMin) slots.push(m);
-
-      // current time row highlight if in this week range
-      const now = new Date();
-      const nowDay = new Date(now); nowDay.setHours(0,0,0,0);
-      const nowMin = now.getHours()*60 + now.getMinutes();
-      const nowInWeek = nowDay >= rangeStart && nowDay < rangeEnd;
-
-      $("calHint").textContent =
-        `Auki ${openHHMM}–${closeHHMM}, slot ${slotMin}min. Klikkaa solua → uusi varaus siihen paikkaan. Klikkaa pilliä → muokkaa.`;
-
-      function itemsFor(dayDate, min, bay){
-        const dayAppts = appts.filter(a => a.bay===bay && sameDay(a.start_ts, dayDate) && startMinute(a.start_ts)===min);
-        const dayBlocks = blocks.filter(b => sameDay(b.start_ts, dayDate) && startMinute(b.start_ts)===min);
-
-        const blockHtml = dayBlocks.map(b =>
-          `<div class="pill orange" data-kind="block" data-id="${b.id}">⛔ ${escapeHtml(b.title || b.kind)}</div>`
-        ).join("<div style='height:6px'></div>");
-
-        const apptHtml = dayAppts.map(a =>
-          `<div class="pill blue" data-kind="appt" data-id="${a.id}">📅 ${escapeHtml(a.plate||"")} • ${escapeHtml(a.customer_name||"")}</div>`
-        ).join("<div style='height:6px'></div>");
-
-        return [blockHtml, apptHtml].filter(Boolean).join("<div style='height:6px'></div>");
+      function appNowMs() {
+        return Date.now();
+      }
+      function todayStrLocal() {
+        const d = new Date(appNowMs());
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      }
+      function addDaysIso(isoDate, days) {
+        const d = new Date(`${isoDate}T00:00:00Z`);
+        d.setUTCDate(d.getUTCDate() + days);
+        return d.toISOString().slice(0, 10);
+      }
+      function getMondayIso(isoDate) {
+        const d = new Date(`${isoDate}T00:00:00Z`);
+        const day = d.getUTCDay(); // 0=su,1=ma
+        const delta = day === 0 ? -6 : 1 - day;
+        d.setUTCDate(d.getUTCDate() + delta);
+        return d.toISOString().slice(0, 10);
+      }
+      function prettyPlate(v) {
+        return v ? String(v).toUpperCase() : "—";
+      }
+      function normalizePlate(v) {
+        return String(v || "").toUpperCase().replace(/[\s-]/g, "");
+      }
+      function prettyLocation(v) {
+        const s = String(v || "").trim();
+        return s || "—";
+      }
+      function isSeasonPaid(v) {
+        if (v === true) return true;
+        if (v === false || v === null || v === undefined) return false;
+        const s = String(v).trim().toLowerCase();
+        return ["true", "t", "1", "yes", "kyllä", "paid", "maksettu"].includes(s);
+      }
+      function getStatusMeta(statusValue, opts = {}) {
+        const raw = String(statusValue || "").trim();
+        const lower = raw.toLowerCase();
+        const isWaiting = opts?.isWaiting === true || lower === "odottaa noutoa";
+        const isWorking = opts?.isWorking === true || lower === "työn alla";
+        const isDelivered = lower === "luovutettu";
+        const isStored = lower === "varastossa";
+        const isDeleted = lower === "poistettu";
+        const label = isWorking ? "Työn alla" : isWaiting ? "Odottaa noutoa" : (raw || "—");
+        if (isWorking) return { label, bg: "#eaf7ef", border: "#c8e6d3", color: "#1f6f4a" };
+        if (isWaiting) return { label, bg: "#fff7ed", border: "#fed7aa", color: "#9a3412" };
+        if (isDelivered) return { label, bg: "#eef4ff", border: "#c7d2fe", color: "#1e429f" };
+        if (isStored) return { label, bg: "#d4f1df", border: "#7fc59b", color: "#064e3b" };
+        if (isDeleted) return { label, bg: "#ffe3e6", border: "#f2a3ad", color: "#8a1023" };
+        return { label, bg: "#f1f5f9", border: "#dbe4ee", color: "#334155" };
+      }
+      function formatActor(name, role) {
+        const n = String(name || "").trim();
+        const r = String(role || "").trim();
+        if (n && r) return `${n} (${r})`;
+        if (n) return n;
+        if (r) return r;
+        return "—";
       }
 
-      $("calTbody").innerHTML = slots.map(min => {
-        const isNowRow = nowInWeek && (Math.abs(min - nowMin) < slotMin/2);
-        return `
-          <tr class="${isNowRow ? "nowRow":""}">
-            <td class="calTimeCell small"><b>${minutesToHHMM(min)}</b></td>
-            ${days.map(d => {
-              const dayDate = addDays(weekStart, d);
-              const isToday = dayDate.getTime() === today.getTime();
-              const c1 = itemsFor(dayDate, min, 1);
-              const c2 = itemsFor(dayDate, min, 2);
-              return `
-                <td class="calCell ${isToday ? "todayCol":""}" data-day="${d}" data-min="${min}" data-bay="1">${c1||""}</td>
-                <td class="calCell ${isToday ? "todayCol":""}" data-day="${d}" data-min="${min}" data-bay="2">${c2||""}</td>
-              `;
+      const STAFF_APPROVAL_TAG = "[ODOTTAA ADMIN-HYVAKSYNTAA]";
+      function ensureAdminApprovalTag(notes) {
+        const txt = String(notes || "").trim();
+        if (txt.toUpperCase().includes(STAFF_APPROVAL_TAG)) return txt;
+        if (!txt) return STAFF_APPROVAL_TAG;
+        return `${STAFF_APPROVAL_TAG}\n${txt}`;
+      }
+      function hasStaffApprovalTag(value) {
+        return String(value || "").toUpperCase().includes(STAFF_APPROVAL_TAG);
+      }
+      function stripStaffApprovalTag(notes) {
+        const lines = String(notes || "").split(/\r?\n/);
+        const filtered = lines.filter((line) => String(line || "").trim().toUpperCase() !== STAFF_APPROVAL_TAG);
+        const out = filtered.join("\n").trim();
+        return out || null;
+      }
+      function normalizeNameKey(value) {
+        return String(value || "").trim().toLowerCase();
+      }
+      function isPendingRowApproval(row) {
+        if (!row || row.deleted) return false;
+        if (hasStaffApprovalTag(row?.notes)) return true;
+        const createdRole = normalizeRole(row?.created_by_role);
+        const updatedRole = normalizeRole(row?.updated_by_role);
+        return createdRole === "staff" && updatedRole !== "admin";
+      }
+      function isPendingCustomerApproval(customer) {
+        if (!customer || customer.poistettu === true) return false;
+        const createdRole = normalizeRole(customer?.created_by_role || customer?.luonut_rooli);
+        const updatedRole = normalizeRole(customer?.updated_by_role || customer?.paivittanyt_rooli);
+        return createdRole === "staff" && updatedRole !== "admin";
+      }
+      function formatPlateDuplicateMessage(plate, duplicateRow) {
+        const plateTxt = prettyPlate(plate);
+        const owner = String(duplicateRow?.customer || "").trim() || "tuntematon asiakas";
+        const location = prettyLocation(duplicateRow?.location);
+        const whereTxt = location ? ` (${location})` : "";
+        return `Rekisteri ${plateTxt} on jo kirjattu asiakkaalle ${owner}${whereTxt}.`;
+      }
+
+      // ==========================================================
+      // Toasts (in-app notifications)
+      // ==========================================================
+      const toastRoot = $("#toasts");
+      let toastId = 1;
+      function toast(variant, title, message, ms = 3500) {
+        const id = toastId++;
+        const el = document.createElement("div");
+        el.className = `toast ${variant || "info"}`;
+        el.innerHTML = `<div class="t"></div><div class="m"></div>`;
+        el.querySelector(".t").textContent = String(title || "Ilmoitus");
+        el.querySelector(".m").textContent = String(message || "");
+        toastRoot.appendChild(el);
+        const t = setTimeout(() => {
+          el.remove();
+          clearTimeout(t);
+        }, ms);
+        return id;
+      }
+
+      // ==========================================================
+      // Modal
+      // ==========================================================
+      const modalBackdrop = $("#modalBackdrop");
+      const modalTitle = $("#modalTitle");
+      const modalBody = $("#modalBody");
+      const modalCloseBtn = $("#modalCloseBtn");
+      let modalOnClose = null;
+
+      function closeModal() {
+        modalBackdrop.classList.remove("open");
+        modalBackdrop.setAttribute("aria-hidden", "true");
+        modalTitle.textContent = "";
+        modalBody.innerHTML = "";
+        const cb = modalOnClose;
+        modalOnClose = null;
+        if (typeof cb === "function") cb();
+      }
+      modalCloseBtn.addEventListener("click", closeModal);
+      modalBackdrop.addEventListener("click", (e) => {
+        if (e.target === modalBackdrop) closeModal();
+      });
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && modalBackdrop.classList.contains("open")) closeModal();
+      });
+
+      function openModal(title, html, { onClose } = {}) {
+        modalOnClose = typeof onClose === "function" ? onClose : null;
+        modalTitle.textContent = String(title || "");
+        modalBody.innerHTML = html || "";
+        modalBackdrop.classList.add("open");
+        modalBackdrop.setAttribute("aria-hidden", "false");
+      }
+
+      function modalConfirm(title, message, buttons) {
+        const btns = Array.isArray(buttons) && buttons.length ? buttons : [{ text: "OK" }];
+        const html = `
+          <div class="msg">${escapeHtml(String(message || ""))}</div>
+          <div class="btn-row" style="justify-content:flex-end; margin-top: 12px;">
+            ${btns.map((b, idx) => {
+              const kind = String(b?.kind || "");
+              const cls = kind === "danger" ? "btn danger" : (kind === "primary" ? "btn primary" : "btn ghost");
+              return `<button class="${cls}" data-modal-btn="${idx}">${escapeHtml(String(b?.text || "OK"))}</button>`;
             }).join("")}
-          </tr>
+          </div>
         `;
-      }).join("");
-
-      // cell click -> create appointment
-      [...$("calTbody").querySelectorAll("td[data-day][data-bay]")].forEach(td => {
-        td.addEventListener("click", (e) => {
-          if(e.target?.getAttribute?.("data-kind")) return;
-          const dayOffset = Number(td.getAttribute("data-day"));
-          const min = Number(td.getAttribute("data-min"));
-          const bay = Number(td.getAttribute("data-bay"));
-          const date = addDays(weekStart, dayOffset);
-          openApptAddAt(date, minutesToHHMM(min), bay);
+        openModal(title || "Vahvista", html);
+        $$('[data-modal-btn]', modalBody).forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const idx = parseInt(btn.getAttribute('data-modal-btn'), 10);
+            const b = btns[idx] || null;
+            closeModal();
+            if (b && typeof b.onPress === 'function') b.onPress();
+          });
         });
+      }
+
+      function modalPromptPin({ title, message, prefill = "" }) {
+        return new Promise((resolve) => {
+          const html = `
+            <div class="msg">${escapeHtml(String(message || "Syötä PIN."))}</div>
+            <div class="field" style="margin-top: 10px;">
+              <div class="label">PIN</div>
+              <input id="pinPromptInput" type="password" autocomplete="one-time-code" />
+            </div>
+            <div class="btn-row" style="justify-content:flex-end;">
+              <button class="btn ghost" id="pinPromptCancel">Peruuta</button>
+              <button class="btn primary" id="pinPromptOk">OK</button>
+            </div>
+          `;
+          openModal(title || "PIN", html, { onClose: () => resolve("") });
+          const input = $("#pinPromptInput", modalBody);
+          input.value = String(prefill || "");
+          setTimeout(() => input.focus(), 0);
+          $("#pinPromptCancel", modalBody).addEventListener("click", () => {
+            closeModal();
+            resolve("");
+          });
+          $("#pinPromptOk", modalBody).addEventListener("click", () => {
+            const v = String(input.value || "").trim();
+            closeModal();
+            resolve(v);
+          });
+          input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+              const v = String(input.value || "").trim();
+              closeModal();
+              resolve(v);
+            }
+          });
+        });
+      }
+      // ==========================================================
+      // API
+      // ==========================================================
+      function makeApi(options = {}) {
+        const base = `${SUPABASE_URL}/rest/v1`;
+        const getSessionPin = typeof options?.getSessionPin === "function" ? options.getSessionPin : () => "";
+        const getSessionIdentity = typeof options?.getSessionIdentity === "function" ? options.getSessionIdentity : () => ({ username: "", role: "", pinSource: "" });
+
+        function resolvePin(pin) {
+          const direct = String(pin || "").trim();
+          return direct || String(getSessionPin() || "").trim();
+        }
+
+        async function request(path, { method = "GET", body, preferReturn = false } = {}) {
+          const url = `${base}${path}`;
+          const res = await fetch(url, {
+            method,
+            headers: {
+              apikey: SUPABASE_ANON_KEY,
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              ...(preferReturn ? { Prefer: "return=representation" } : {}),
+            },
+            body: body ? JSON.stringify(body) : undefined,
+          });
+          const text = await res.text();
+          let data = null;
+          try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+          if (!res.ok) {
+            const msg = data?.message || data?.error_description || text || "Supabase error";
+            throw new Error(msg);
+          }
+          return data;
+        }
+
+        const normalizeRpcObject = (res) => (Array.isArray(res) ? (res[0] || {}) : (res || {}));
+        const normalizeRoleValue = (value) => {
+          const v = String(value || "").trim().toLowerCase();
+          return v === "admin" ? "admin" : (v === "staff" ? "staff" : "");
+        };
+        const parseRpcBoolean = (res, key) => {
+          if (typeof res === "boolean") return res;
+          if (typeof res === "string") {
+            const txt = res.trim().toLowerCase();
+            if (txt === "true" || txt === "t" || txt === "1") return true;
+            if (txt === "false" || txt === "f" || txt === "0") return false;
+          }
+          if (Array.isArray(res)) {
+            if (typeof res[0] === "boolean") return res[0];
+            if (res[0] && typeof res[0] === "object" && key in res[0]) return !!res[0][key];
+          }
+          if (res && typeof res === "object" && key in res) return !!res[key];
+          return null;
+        };
+
+        async function callBoolRpc(fnName, keyName, code, pin) {
+          const bodies = [{ p_hotel_code: code, p_pin: pin }, { hotel_code: code, pin }];
+          let missing = false;
+          for (const body of bodies) {
+            try {
+              const out = await request(`/rpc/${fnName}`, { method: "POST", body });
+              const parsed = parseRpcBoolean(out, keyName);
+              if (typeof parsed === "boolean") return { ok: true, value: parsed };
+            } catch (e) {
+              const msg = String(e?.message || "");
+              if (msg.includes(`Could not find the function public.${fnName}`)) { missing = true; continue; }
+              throw e;
+            }
+          }
+          return missing ? { ok: false, reason: "missing_function" } : { ok: false, reason: "invalid_response" };
+        }
+
+        async function fetchPinIdentity(code, pin) {
+          const variants = [{ p_hotel_code: code, p_pin: pin }, { hotel_code: code, pin }];
+          for (const body of variants) {
+            try { return normalizeRpcObject(await request(`/rpc/get_pin_identity`, { method: "POST", body })); }
+            catch (e) {
+              const msg = String(e?.message || "");
+              if (msg.includes("Could not find the function public.get_pin_identity")) continue;
+              throw e;
+            }
+          }
+          return null;
+        }
+
+        async function safeHotelDisplayName(code) {
+          try {
+            const rows = await request(`/hotels?hotel_code=eq.${encodeURIComponent(code)}&select=display_name,hotel_name,nimi,name,title&limit=1`);
+            const row = rows?.[0];
+            if (!row || typeof row !== "object") return "";
+            const candidates = [row.display_name, row.hotel_name, row.nimi, row.name, row.title];
+            for (const value of candidates) if (typeof value === "string" && value.trim()) return value.trim();
+            return "";
+          } catch { return ""; }
+        }
+
+        async function enrichVerifiedIdentity(base, code, pin) {
+          const out = (base && typeof base === "object") ? { ...base } : {};
+          out.ok = true;
+          out.hotel_code = String(out?.hotel_code || code || "").trim() || code;
+          if (!String(out?.display_name || "").trim()) {
+            const displayName = await safeHotelDisplayName(code);
+            out.display_name = displayName || out.hotel_code;
+          }
+
+          const currentRole = normalizeRoleValue(out?.role);
+          const currentSource = String(out?.source || "").trim().toLowerCase();
+          const currentUsername = out?.username ?? null;
+
+          if (!currentRole || !currentSource || currentUsername === null || currentUsername === "") {
+            const ident = await fetchPinIdentity(code, pin);
+            if (ident && ident.ok === true) {
+              const identRole = normalizeRoleValue(ident?.role);
+              if (!currentRole && identRole) out.role = identRole;
+              if (!currentSource && String(ident?.source || "").trim()) out.source = String(ident.source).trim();
+              if ((currentUsername === null || currentUsername === "") && ident?.username !== undefined) out.username = ident.username;
+            } else if (ident && ident.ok === false) {
+              return { ok: false, reason: String(ident?.reason || "wrong_pin") };
+            }
+          }
+
+          let finalRole = normalizeRoleValue(out?.role);
+          if (!finalRole) {
+            const adminGate = await callBoolRpc("check_hotel_admin_pin", "check_hotel_admin_pin", code, pin);
+            if (adminGate.ok && adminGate.value === true) {
+              finalRole = "admin";
+              if (!String(out?.source || "").trim()) out.source = "master";
+            } else {
+              finalRole = "staff";
+            }
+          }
+          out.role = finalRole;
+          if (!String(out?.source || "").trim()) out.source = finalRole === "admin" ? "master" : "user";
+          if (out.username === undefined) out.username = null;
+          return out;
+        }
+
+        async function verifyHotelWithPin(hotelCode, pin) {
+          const code = String(hotelCode || "").trim();
+          const p = String(pin || "").trim();
+          if (!code) return { ok: false, reason: "missing_hotel_code" };
+          if (!p) return { ok: false, reason: "missing_pin" };
+
+          try {
+            const verifyBodies = [{ p_hotel_code: code, p_pin: p }, { hotel_code: code, pin: p }];
+            let verifyMissingFn = false;
+            let lastVerifyOut = null;
+            for (const body of verifyBodies) {
+              try {
+                const res = await request(`/rpc/verify_hotel_with_pin`, { method: "POST", body });
+                const out = normalizeRpcObject(res);
+                if (!out || typeof out !== "object") { lastVerifyOut = { ok: false, reason: "invalid_response" }; continue; }
+                if (out?.ok !== true) { lastVerifyOut = out; continue; }
+                return await enrichVerifiedIdentity(out, code, p);
+              } catch (e) {
+                const msg = String(e?.message || "");
+                if (msg.includes("Could not find the function public.verify_hotel_with_pin")) { verifyMissingFn = true; continue; }
+                throw e;
+              }
+            }
+            if (lastVerifyOut && lastVerifyOut.ok !== true) {
+              const ident = await fetchPinIdentity(code, p);
+              if (ident && ident.ok === true) return await enrichVerifiedIdentity(ident, code, p);
+              return lastVerifyOut;
+            }
+            if (!verifyMissingFn) return { ok: false, reason: "invalid_response" };
+            throw new Error("Could not find the function public.verify_hotel_with_pin");
+          } catch (e) {
+            const msg = String(e?.message || "");
+            if (!msg.includes("Could not find the function public.verify_hotel_with_pin")) throw e;
+
+            const ident = await fetchPinIdentity(code, p);
+            if (ident && ident.ok === true) return await enrichVerifiedIdentity(ident, code, p);
+            if (ident && ident.ok === false) return { ok: false, reason: String(ident?.reason || "wrong_pin") };
+
+            const adminGate = await callBoolRpc("check_hotel_admin_pin", "check_hotel_admin_pin", code, p);
+            if (adminGate.ok && adminGate.value === true) {
+              return await enrichVerifiedIdentity({ ok: true, hotel_code: code, role: "admin", username: null, source: "master" }, code, p);
+            }
+            if (adminGate.ok && adminGate.value === false) return { ok: false, reason: "wrong_pin" };
+
+            const masterGate = await callBoolRpc("check_hotel_pin", "check_hotel_pin", code, p);
+            if (masterGate.ok && masterGate.value === true) {
+              return await enrichVerifiedIdentity({ ok: true, hotel_code: code, role: "admin", username: null, source: "master" }, code, p);
+            }
+            if (masterGate.ok && masterGate.value === false) return { ok: false, reason: "wrong_pin" };
+
+            return { ok: false, reason: "missing_function", message: "Backendistä puuttuu verify_hotel_with_pin (ja fallbackit)." };
+          }
+        }
+
+        function getActorIdentity() {
+          const raw = getSessionIdentity() || {};
+          const pinSource = String(raw?.pinSource || "").trim().toLowerCase();
+          const username = String(raw?.username || "").trim();
+          const role = normalizeRole(raw?.role) || null;
+          const actorUsername = username || (pinSource === "master" ? "master" : "");
+          return { username: actorUsername || null, role };
+        }
+
+        function actorFieldsForInsert() {
+          const actor = getActorIdentity();
+          const out = {};
+          if (actor.username) { out.created_by_name = actor.username; out.updated_by_name = actor.username; }
+          if (actor.role) { out.created_by_role = actor.role; out.updated_by_role = actor.role; }
+          return out;
+        }
+
+        function actorFieldsForUpdate() {
+          const actor = getActorIdentity();
+          const out = {};
+          if (actor.username) out.updated_by_name = actor.username;
+          if (actor.role) out.updated_by_role = actor.role;
+          return out;
+        }
+
+        function deliveredFieldsForPatch(patch = {}) {
+          if (!patch || typeof patch !== "object") return {};
+          const hasOwn = (key) => Object.prototype.hasOwnProperty.call(patch, key);
+          const statusLower = String(patch?.status || "").trim().toLowerCase();
+          const hasOutDate = hasOwn("out_date");
+          const outDate = patch?.out_date;
+          const marksDelivered = statusLower === "luovutettu" || (hasOutDate && outDate !== null && String(outDate || "").trim() !== "");
+          const clearsDelivered = hasOutDate && (outDate === null || String(outDate || "").trim() === "");
+          if (!marksDelivered && !clearsDelivered) return {};
+          if (clearsDelivered) return { delivered_by_name: null, delivered_by_role: null };
+          const actor = getActorIdentity();
+          return { delivered_by_name: actor.username || null, delivered_by_role: actor.role || null };
+        }
+
+        function isActorColumnMissingError(message) {
+          const msg = String(message || "");
+          return (
+            msg.includes("created_by_name") || msg.includes("created_by_role") ||
+            msg.includes("updated_by_name") || msg.includes("updated_by_role") ||
+            msg.includes("delivered_by_name") || msg.includes("delivered_by_role")
+          );
+        }
+
+        const mapFromDb = (row) => ({
+          id: row.id,
+          hotel_code: row.hotel_code,
+          customer: row.nimi ?? row.customer,
+          phone: row.puhelin ?? row.phone,
+          plate: row.rekisteri ?? row.plate,
+          tire_size: row.sahkoposti ?? row.tire_size,
+          location: row.hyllypaikka ?? row.location,
+          last_location: row.last_hyllypaikka ?? row.last_location,
+          pickup_date: row.nouto_paiva ?? row.pickup_date,
+          status: row.tila ?? row.status,
+          notes: row.huomiot ?? row.notes,
+          season_fee_paid: row.season_fee_paid,
+          deleted: row.poistettu ?? row.deleted,
+          rev: row.versio ?? row.rev,
+          updated_at: row.paivitetty ?? row.updated_at,
+          created_at: row.luotu ?? row.created_at,
+          created_by_name: row.luonut_nimi ?? row.created_by_name ?? row.created_by_username ?? row.created_by ?? row.creator_name ?? row.creator ?? null,
+          created_by_role: row.luonut_rooli ?? row.created_by_role ?? row.creator_role ?? null,
+          updated_by_name: row.paivittanyt_nimi ?? row.updated_by_name ?? row.updated_by_username ?? row.updated_by ?? row.last_modified_by ?? row.editor_name ?? row.editor ?? null,
+          updated_by_role: row.paivittanyt_rooli ?? row.updated_by_role ?? row.editor_role ?? null,
+          delivered_by_name: row.luovuttanut_nimi ?? row.delivered_by_name ?? row.out_by_name ?? null,
+          delivered_by_role: row.luovuttanut_rooli ?? row.delivered_by_role ?? row.out_by_role ?? null,
+          out_date: row.ulos_pvm ?? row.out_date,
+          in_date: row.sisaan_pvm ?? row.in_date,
+          waiting_pickup: row.odottaa_noutoa ?? row.waiting_pickup ?? ((row.tila || row.status || "").toLowerCase() === "odottaa noutoa"),
+          working: row.tyon_alla ?? row.working ?? ((row.tila || row.status || "").toLowerCase() === "työn alla"),
+        });
+
+        const mapToDb = (payload) => ({
+          nimi: payload.customer ?? null,
+          puhelin: payload.phone ?? null,
+          rekisteri: payload.plate ?? null,
+          sahkoposti: payload.email ?? payload.tire_size ?? null,
+          hyllypaikka: payload.location ?? null,
+          last_hyllypaikka: payload.last_location ?? null,
+          nouto_paiva: payload.pickup_date ?? null,
+          tila: payload.status ?? null,
+          huomiot: payload.notes ?? null,
+          season_fee_paid: payload.season_fee_paid ?? false,
+          poistettu: payload.deleted ?? false,
+          versio: payload.rev,
+          ulos_pvm: payload.out_date ?? null,
+          sisaan_pvm: payload.in_date ?? null,
+        });
+
+        const mapPatchToDb = (payload = {}) => {
+          const out = {};
+          if (payload.customer !== undefined) out.nimi = payload.customer;
+          if (payload.phone !== undefined) out.puhelin = payload.phone;
+          if (payload.plate !== undefined) out.rekisteri = payload.plate;
+          if (payload.tire_size !== undefined) out.sahkoposti = payload.tire_size;
+          if (payload.email !== undefined) out.sahkoposti = payload.email;
+          if (payload.location !== undefined) out.hyllypaikka = payload.location;
+          if (payload.last_location !== undefined) out.last_hyllypaikka = payload.last_location;
+          if (payload.pickup_date !== undefined) out.nouto_paiva = payload.pickup_date;
+          if (payload.status !== undefined) out.tila = payload.status;
+          if (payload.notes !== undefined) out.huomiot = payload.notes;
+          if (payload.season_fee_paid !== undefined) out.season_fee_paid = !!payload.season_fee_paid;
+          if (payload.deleted !== undefined) out.poistettu = payload.deleted === true;
+          if (payload.out_date !== undefined) out.ulos_pvm = payload.out_date;
+          if (payload.in_date !== undefined) out.sisaan_pvm = payload.in_date;
+          if (payload.waiting_pickup !== undefined) out.odottaa_noutoa = payload.waiting_pickup;
+          if (payload.working !== undefined) out.tyon_alla = payload.working;
+          return out;
+        };
+
+        let tireActorColumnsSupported = null;
+        let customerActorColumnsSupported = null;
+
+        return {
+          request,
+          verifyHotelWithPin,
+          getHotelMasterName: async (hotelCode) => {
+            const code = String(hotelCode || "").trim();
+            if (!code) return null;
+            try {
+              const rows = await request(`/hotels?hotel_code=eq.${encodeURIComponent(code)}&select=master_name&limit=1`);
+              const value = rows?.[0]?.master_name;
+              if (typeof value === "string" && value.trim()) return value.trim();
+              return null;
+            } catch { return null; }
+          },
+
+          listTires: (hotelCode) => request(`/tires?hotel_code=eq.${encodeURIComponent(hotelCode)}&poistettu=eq.false&order=paivitetty.desc&limit=200`).then((rows) => (rows || []).map(mapFromDb)),
+
+          listCustomers: (hotelCode) => request(`/customers?hotel_code=eq.${encodeURIComponent(hotelCode)}&poistettu=eq.false&order=paivitetty.desc&limit=500`),
+
+          getCustomerByName: (hotelCode, name) => request(`/customers?hotel_code=eq.${encodeURIComponent(hotelCode)}&nimi=eq.${encodeURIComponent(name)}&poistettu=eq.false&limit=1`).then((rows) => (rows && rows[0] ? rows[0] : null)),
+
+          findActiveTireByPlate: async (hotelCode, plate, excludeId = null) => {
+            const code = String(hotelCode || "").trim();
+            const wanted = normalizePlate(plate);
+            if (!code || !wanted) return null;
+            const rows = await request(`/tires?hotel_code=eq.${encodeURIComponent(code)}&poistettu=eq.false&select=*&limit=5000`);
+            const mapped = (rows || []).map(mapFromDb);
+            return mapped.find((r) => {
+              if (!r?.id) return false;
+              if (excludeId != null && String(r.id) === String(excludeId)) return false;
+              return normalizePlate(r.plate) === wanted;
+            }) || null;
+          },
+
+          addCustomer: async (hotelCode, payload) => {
+            const actorFields = customerActorColumnsSupported === false ? {} : actorFieldsForInsert();
+            try {
+              return await request(`/customers`, { method: "POST", preferReturn: true, body: { hotel_code: hotelCode, poistettu: false, ...payload, ...actorFields } });
+            } catch (e) {
+              const actorAttempted = Object.keys(actorFields).length > 0;
+              if (actorAttempted && isActorColumnMissingError(e?.message)) {
+                customerActorColumnsSupported = false;
+                return request(`/customers`, { method: "POST", preferReturn: true, body: { hotel_code: hotelCode, poistettu: false, ...payload } });
+              }
+              throw e;
+            }
+          },
+
+          updateCustomer: async (id, patch) => {
+            const actorFields = customerActorColumnsSupported === false ? {} : actorFieldsForUpdate();
+            try {
+              return await request(`/customers?id=eq.${id}`, { method: "PATCH", preferReturn: true, body: { ...patch, ...actorFields } });
+            } catch (e) {
+              const actorAttempted = Object.keys(actorFields).length > 0;
+              if (actorAttempted && isActorColumnMissingError(e?.message)) {
+                customerActorColumnsSupported = false;
+                return request(`/customers?id=eq.${id}`, { method: "PATCH", preferReturn: true, body: patch });
+              }
+              throw e;
+            }
+          },
+
+          addTire: async (hotelCode, payload) => {
+            const normalizedPayload = { ...payload, in_date: payload?.in_date || todayStrLocal() };
+            const actorFields = tireActorColumnsSupported === false ? {} : actorFieldsForInsert();
+            let rows;
+            try {
+              rows = await request(`/tires`, { method: "POST", preferReturn: true, body: { hotel_code: hotelCode, poistettu: false, versio: 1, ...mapToDb(normalizedPayload), season_fee_paid: !!normalizedPayload.season_fee_paid, ...actorFields } });
+            } catch (e) {
+              const actorAttempted = Object.keys(actorFields).length > 0;
+              if (actorAttempted && isActorColumnMissingError(e?.message)) {
+                tireActorColumnsSupported = false;
+                rows = await request(`/tires`, { method: "POST", preferReturn: true, body: { hotel_code: hotelCode, poistettu: false, versio: 1, ...mapToDb(normalizedPayload), season_fee_paid: !!normalizedPayload.season_fee_paid } });
+              } else {
+                throw e;
+              }
+            }
+            return rows?.[0] ? mapFromDb(rows[0]) : null;
+          },
+
+          updateTire: async (id, expectedRev, patch) => {
+            const useActorCols = tireActorColumnsSupported !== false;
+            const actorFields = useActorCols ? actorFieldsForUpdate() : {};
+            const deliveredFields = useActorCols ? deliveredFieldsForPatch(patch) : {};
+            const bodyWithActor = { ...mapPatchToDb(patch), ...deliveredFields, ...actorFields, versio: expectedRev + 1 };
+            let rows;
+            try {
+              rows = await request(`/tires?id=eq.${id}&versio=eq.${expectedRev}`, { method: "PATCH", preferReturn: true, body: bodyWithActor });
+            } catch (e) {
+              const actorAttempted = Object.keys(actorFields).length > 0 || Object.keys(deliveredFields).length > 0;
+              if (actorAttempted && isActorColumnMissingError(e?.message)) {
+                tireActorColumnsSupported = false;
+                rows = await request(`/tires?id=eq.${id}&versio=eq.${expectedRev}`, { method: "PATCH", preferReturn: true, body: { ...mapPatchToDb(patch), versio: expectedRev + 1 } });
+              } else {
+                throw e;
+              }
+            }
+            if (!rows || rows.length === 0) throw new Error("Konflikti: joku ehti muokata tätä riviä. Päivitä lista ja yritä uudelleen.");
+            return mapFromDb(rows[0]);
+          },
+
+          deleteTireWithPin: async (tireId, hotelCode, pin) => {
+            const resolvedPin = resolvePin(pin);
+            const res = await request(`/rpc/soft_delete_tire_with_pin`, { method: "POST", body: { tire_id: String(tireId ?? ""), hotel_code: hotelCode, pin: resolvedPin } });
+            const out = normalizeRpcObject(res);
+            if (out === true || out?.ok === true || out === "true") return true;
+            const reason = out?.reason;
+            if (reason === "wrong_pin") throw new Error("Väärä PIN.");
+            if (reason === "no_rows_matched" || reason === "not_found") throw new Error("Riviä ei löytynyt tai jo poistettu.");
+            throw new Error(reason || "Poisto epäonnistui.");
+          },
+
+          hardDeleteTireWithPin: async (tireId, hotelCode, pin) => {
+            const resolvedPin = resolvePin(pin);
+            const res = await request(`/rpc/hard_delete_tire_with_pin`, { method: "POST", body: { tire_id: String(tireId ?? ""), hotel_code: hotelCode, pin: resolvedPin } });
+            const out = normalizeRpcObject(res);
+            if (out === true || out?.ok === true || out?.deleted === true) return true;
+            const reason = out?.reason;
+            if (reason === "wrong_pin") throw new Error("Väärä PIN.");
+            if (reason === "not_found") throw new Error("Riviä ei löytynyt.");
+            throw new Error(reason || "Pysyvä poisto epäonnistui.");
+          },
+
+          customerSoftDeleteCascadeWithPin: async (hotelCode, pin, customerId) => {
+            const resolvedPin = resolvePin(pin);
+            const res = await request(`/rpc/customer_soft_delete_cascade_with_pin`, { method: "POST", body: { hotel_code: hotelCode, pin: resolvedPin, customer_id: String(customerId ?? "") } });
+            return normalizeRpcObject(res);
+          },
+
+          customerHardDeleteCascadeWithPin: async (hotelCode, pin, customerId) => {
+            const resolvedPin = resolvePin(pin);
+            const res = await request(`/rpc/customer_hard_delete_cascade_with_pin`, { method: "POST", body: { hotel_code: hotelCode, pin: resolvedPin, customer_id: String(customerId ?? "") } });
+            return normalizeRpcObject(res);
+          },
+
+          listLocationsAdmin: (hotelCode) => request(`/locations?hotel_code=eq.${encodeURIComponent(hotelCode)}&select=id,code,label,shelf,row_letter,spot&order=shelf&order=row_letter&order=spot`),
+
+          addLocation: (hotelCode, shelf, row_letter, spot) => request(`/locations`, { method: "POST", preferReturn: true, body: { hotel_code: hotelCode, shelf, row_letter, spot, code: `H${String(shelf).padStart(2, "0")}-${row_letter}-${String(spot).padStart(2, "0")}`, label: `Hylly ${String(shelf).padStart(2, "0")} / ${row_letter} / ${String(spot).padStart(2, "0")}` } }),
+
+          deleteLocation: (id) => request(`/locations?id=eq.${id}`, { method: "DELETE" }),
+
+          listHotelUsersWithPin: async (hotelCode, pin) => {
+            const resolvedPin = resolvePin(pin);
+            const variants = [{ p_hotel_code: hotelCode, p_pin: resolvedPin }, { hotel_code: hotelCode, pin: resolvedPin }];
+            for (const body of variants) {
+              try {
+                const res = await request(`/rpc/list_hotel_users_with_pin`, { method: "POST", body });
+                const out = normalizeRpcObject(res);
+                return { ...out, users: Array.isArray(out?.users) ? out.users : [] };
+              } catch (e) {
+                const msg = String(e?.message || "");
+                if (msg.includes("Could not find the function public.list_hotel_users_with_pin")) return { ok: false, reason: "missing_function", message: msg };
+              }
+            }
+            return { ok: false, reason: "invalid_response" };
+          },
+
+          setHotelUserActiveWithPin: async (hotelCode, pin, username, isActive) => {
+            const resolvedPin = resolvePin(pin);
+            const variants = [
+              { p_hotel_code: hotelCode, p_pin: resolvedPin, p_username: username, p_is_active: !!isActive },
+              { hotel_code: hotelCode, pin: resolvedPin, username, is_active: !!isActive },
+            ];
+            for (const body of variants) {
+              try { return normalizeRpcObject(await request(`/rpc/set_hotel_user_active_with_pin`, { method: "POST", body })); }
+              catch (e) {
+                const msg = String(e?.message || "");
+                if (msg.includes("Could not find the function public.set_hotel_user_active_with_pin")) return { ok: false, reason: "missing_function", message: msg };
+              }
+            }
+            return { ok: false, reason: "invalid_response" };
+          },
+
+          upsertHotelUserPinWithPin: async (hotelCode, pin, username, newPin, role = "staff", isActive = true) => {
+            const resolvedPin = resolvePin(pin);
+            try {
+              return normalizeRpcObject(await request(`/rpc/upsert_hotel_user_pin_with_pin`, { method: "POST", body: { p_hotel_code: hotelCode, p_pin: resolvedPin, p_username: username, p_new_pin: newPin, p_role: role === "admin" ? "admin" : "staff", p_is_active: !!isActive } }));
+            } catch (e) {
+              const msg = String(e?.message || "");
+              if (msg.includes("Could not find the function public.upsert_hotel_user_pin_with_pin")) return { ok: false, reason: "missing_function", message: msg };
+              throw e;
+            }
+          },
+
+          upsertHotelUserPinWithMasterPin: async (hotelCode, masterPin, username, newPin, role = "staff", isActive = true) => {
+            try {
+              return normalizeRpcObject(await request(`/rpc/upsert_hotel_user_pin_with_master_pin`, { method: "POST", body: { p_hotel_code: hotelCode, p_master_pin: String(masterPin || "").trim(), p_username: username, p_new_pin: newPin, p_role: role === "admin" ? "admin" : "staff", p_is_active: !!isActive } }));
+            } catch (e) {
+              const msg = String(e?.message || "");
+              if (msg.includes("Could not find the function public.upsert_hotel_user_pin_with_master_pin")) return { ok: false, reason: "missing_function", message: msg };
+              throw e;
+            }
+          },
+
+          getCalendarWeek: async (hotelCode, weekStart) => {
+            const variants = [
+              { endpoint: `/rpc/get_calendar_week`, body: { p_hotel_code: hotelCode, p_week_start: weekStart } },
+              { endpoint: `/rpc/get_calendar_week`, body: { hotel_code: hotelCode, week_start: weekStart } },
+              { endpoint: `/rpc/get_calendar_week_v2`, body: { p_hotel_code: hotelCode, p_week_start: weekStart } },
+              { endpoint: `/rpc/get_calendar_week_v2`, body: { hotel_code: hotelCode, week_start: weekStart } },
+            ];
+            let lastErr = null;
+            for (const v of variants) {
+              try {
+                const res = await request(v.endpoint, { method: "POST", body: v.body });
+                const out = normalizeRpcObject(res);
+                if (out && typeof out === "object") return out;
+              } catch (e) {
+                const msg = String(e?.message || "");
+                const missing = msg.includes("Could not find the function public.get_calendar_week") || msg.includes("Could not find the function public.get_calendar_week_v2");
+                if (!missing) throw e;
+                lastErr = e;
+              }
+            }
+            throw lastErr || new Error("Backendistä puuttuu get_calendar_week/get_calendar_week_v2.");
+          },
+
+          createBlockWithPin: async (hotelCode, pin, payload) => {
+            const resolvedPin = resolvePin(pin);
+            const variants = [
+              { p_hotel_code: hotelCode, p_pin: resolvedPin, p_start_ts: payload?.start_ts, p_end_ts: payload?.end_ts, p_kind: payload?.kind ?? "tauko", p_title: payload?.title ?? null, p_notes: payload?.notes ?? null },
+              { hotel_code: hotelCode, pin: resolvedPin, start_ts: payload?.start_ts, end_ts: payload?.end_ts, kind: payload?.kind ?? "tauko", title: payload?.title ?? null, notes: payload?.notes ?? null },
+            ];
+            let lastErr = null;
+            for (const body of variants) {
+              try { return normalizeRpcObject(await request(`/rpc/create_block_with_pin`, { method: "POST", body })); }
+              catch (e) {
+                const msg = String(e?.message || "");
+                const missing = msg.includes("Could not find the function public.create_block_with_pin") || msg.includes("function public.create_block_with_pin(");
+                if (!missing) throw e;
+                lastErr = e;
+              }
+            }
+            throw lastErr || new Error("Blokin PIN-luontifunktiota ei löytynyt.");
+          },
+
+          deleteBlockWithPin: async (hotelCode, pin, blockId) => {
+            const resolvedPin = resolvePin(pin);
+            const variants = [{ p_hotel_code: hotelCode, p_pin: resolvedPin, p_block_id: blockId ?? null }, { hotel_code: hotelCode, pin: resolvedPin, block_id: blockId ?? null }];
+            for (const body of variants) {
+              try {
+                const out = normalizeRpcObject(await request(`/rpc/delete_block_with_pin`, { method: "POST", body }));
+                if (out?.reason === "wrong_pin") return { ok: false, reason: "wrong_pin" };
+                if (out?.ok === false) return out;
+                return { ok: true };
+              } catch (e) {
+                const msg = String(e?.message || "");
+                const missing = msg.includes("Could not find the function public.delete_block_with_pin") || msg.includes("function public.delete_block_with_pin(");
+                if (!missing) throw e;
+              }
+            }
+            return { ok: false, reason: "missing_function" };
+          },
+
+          changeOwnPin: async (hotelCode, username, oldPin, newPin) => normalizeRpcObject(await request(`/rpc/change_hotel_user_pin_with_old_pin`, { method: "POST", body: { p_hotel_code: hotelCode, p_username: username, p_old_pin: oldPin, p_new_pin: newPin } })),
+        };
+      }
+      // ==========================================================
+      // State
+      // ==========================================================
+      const state = {
+        tab: "dashboard",
+        session: {
+          ok: false,
+          hotelCode: null,
+          displayName: null,
+          role: null,
+          username: null,
+          pinSource: null,
+          pin: null, // RAM only
+          masterName: null,
+        },
+        security: {
+          autoLogoutMinutes: 30,
+        },
+        lastActivityMs: appNowMs(),
+        data: {
+          tires: [],
+          customers: [],
+          blocks: [],
+          users: [],
+          locations: [],
+          calendarDate: todayStrLocal(),
+        },
+        ui: {
+          loading: false,
+        },
+      };
+
+      const api = makeApi({
+        getSessionPin: () => String(state.session.pin || "").trim(),
+        getSessionIdentity: () => ({
+          username: String(state.session.username || "").trim(),
+          role: normalizeRole(state.session.role),
+          pinSource: String(state.session.pinSource || "").trim().toLowerCase(),
+        }),
       });
 
-      // pill click -> edit
-      [...$("calTbody").querySelectorAll("[data-kind][data-id]")].forEach(el => {
-        el.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const kind = el.getAttribute("data-kind");
-          const id = el.getAttribute("data-id");
-          if(kind==="appt"){
-            const row = appts.find(x => x.id === id);
-            if(row) openApptEdit(row);
+      function setLoading(v) {
+        state.ui.loading = !!v;
+        render();
+      }
+
+      function bumpActivity() {
+        state.lastActivityMs = appNowMs();
+      }
+      ["click", "keydown", "mousemove", "touchstart"].forEach((ev) => {
+        window.addEventListener(ev, () => bumpActivity(), { passive: true });
+      });
+
+      setInterval(() => {
+        const mins = clamp(parseInt(state.security.autoLogoutMinutes, 10) || 0, 0, 240);
+        if (!state.session.ok) return;
+        if (!mins) return;
+        const idleMs = appNowMs() - state.lastActivityMs;
+        if (idleMs > mins * 60 * 1000) {
+          logout("Automaattinen kirjaus ulos");
+        }
+      }, 5000);
+
+      function setSessionFromVerify(verify, pin) {
+        state.session.ok = true;
+        state.session.hotelCode = String(verify?.hotel_code || "").trim();
+        state.session.displayName = String(verify?.display_name || verify?.hotel_code || "").trim();
+        state.session.role = normalizeRole(verify?.role || "");
+        state.session.username = verify?.username ?? null;
+        state.session.pinSource = String(verify?.source || "").trim().toLowerCase() || null;
+        state.session.pin = String(pin || "").trim() || null;
+      }
+
+      function clearData() {
+        state.data.tires = [];
+        state.data.customers = [];
+        state.data.blocks = [];
+        state.data.users = [];
+        state.data.locations = [];
+        state.data.calendarDate = todayStrLocal();
+      }
+
+      function logout(reason) {
+        state.session = { ok: false, hotelCode: null, displayName: null, role: null, username: null, pinSource: null, pin: null, masterName: null };
+        state.tab = "dashboard";
+        clearData();
+        state.ui.loading = false;
+        $("#nav").style.display = "none";
+        $("#sessionChip").style.display = "none";
+        if (reason) toast("info", "Ilmoitus", reason);
+        render();
+      }
+
+      function setTab(tab) {
+        state.tab = tab;
+        render();
+        if (tab === "dashboard" || tab === "rows" || tab === "worklist") ensureLoaded();
+        if (tab === "customers") loadCustomers();
+        if (tab === "calendar") loadCalendarWeek();
+        if (tab === "settings") {
+          if (isAdminRole(state.session.role)) {
+            loadUsers();
+            loadLocations();
+          }
+        }
+      }
+
+      async function ensureLoaded() {
+        await Promise.all([loadTires(), loadCustomers()]);
+      }
+
+      async function loadTires() {
+        if (!state.session.ok) return;
+        try {
+          state.data.tires = await api.listTires(state.session.hotelCode);
+          render();
+        } catch (e) {
+          toast("error", "Virhe", e?.message || "Rivien lataus epäonnistui");
+        }
+      }
+
+      async function loadCustomers() {
+        if (!state.session.ok) return;
+        try {
+          const rows = await api.listCustomers(state.session.hotelCode);
+          state.data.customers = Array.isArray(rows) ? rows : [];
+          render();
+        } catch (e) {
+          toast("error", "Virhe", e?.message || "Asiakkaiden lataus epäonnistui");
+        }
+      }
+
+      async function loadCalendarWeek() {
+        if (!state.session.ok) return;
+        try {
+          const weekStart = getMondayIso(state.data.calendarDate);
+          const payload = await api.getCalendarWeek(state.session.hotelCode, weekStart);
+          state.data.blocks = Array.isArray(payload?.blocks) ? payload.blocks : [];
+          render();
+        } catch (e) {
+          toast("error", "Virhe", e?.message || "Kalenterin lataus epäonnistui");
+        }
+      }
+
+      async function loadUsers() {
+        if (!state.session.ok || !isAdminRole(state.session.role)) return;
+        try {
+          const res = await api.listHotelUsersWithPin(state.session.hotelCode, state.session.pin);
+          if (res?.ok !== true) {
+            if (String(res?.reason || "") === "wrong_pin") toast("error", "Virhe", "Väärä PIN.");
+            else toast("error", "Virhe", res?.message || "Käyttäjälistan lataus epäonnistui");
+            return;
+          }
+          let users = Array.isArray(res?.users) ? res.users : [];
+          const masterName = state.session.masterName || "Master";
+          users = [{ id: "master", username: masterName, role: "admin", is_active: true, is_master: true }, ...users];
+          state.data.users = users;
+          render();
+        } catch (e) {
+          toast("error", "Virhe", e?.message || "Käyttäjälistan lataus epäonnistui");
+        }
+      }
+
+      async function loadLocations() {
+        if (!state.session.ok || !isAdminRole(state.session.role)) return;
+        try {
+          const rows = await api.listLocationsAdmin(state.session.hotelCode);
+          state.data.locations = Array.isArray(rows) ? rows : [];
+          render();
+        } catch (e) {
+          toast("error", "Virhe", e?.message || "Hyllypaikkojen lataus epäonnistui");
+        }
+      }
+
+      async function doLogin(hotelCode, pin) {
+        setLoading(true);
+        try {
+          const verify = await api.verifyHotelWithPin(hotelCode, pin);
+          if (!verify?.ok) {
+            const reason = String(verify?.reason || "");
+            if (reason === "wrong_pin") toast("error", "Virhe", "Väärä PIN.");
+            else if (reason === "hotel_not_found") toast("error", "Virhe", "Hotellia ei löytynyt.");
+            else if (reason === "missing_pin" || reason === "missing_hotel_code") toast("error", "Virhe", "Täytä hotellikoodi ja PIN.");
+            else if (reason === "missing_function") toast("error", "Virhe", "Backendistä puuttuu verify_hotel_with_pin-funktio.");
+            else toast("error", "Virhe", verify?.message || reason || "Kirjautuminen epäonnistui.");
+            return;
+          }
+
+          setSessionFromVerify(verify, pin);
+          state.session.masterName = await api.getHotelMasterName(state.session.hotelCode);
+
+          $("#nav").style.display = "";
+          $("#sessionChip").style.display = "";
+          state.tab = "dashboard";
+
+          await ensureLoaded();
+          if (isAdminRole(state.session.role)) {
+            await Promise.all([loadUsers(), loadLocations()]);
+          }
+          await loadCalendarWeek();
+          toast("success", "Ilmoitus", "Kirjautuminen onnistui.");
+        } catch (e) {
+          toast("error", "Virhe", e?.message || "Kirjautuminen epäonnistui");
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      async function requirePin({ title, message, forcePrompt = false, prefill = "" } = {}) {
+        const saved = String(state.session.pin || "").trim();
+        if (!forcePrompt && saved) return saved;
+        const typed = await modalPromptPin({ title: title || "PIN", message: message || "Syötä PIN.", prefill });
+        if (!typed) return "";
+        const verify = await api.verifyHotelWithPin(state.session.hotelCode, typed);
+        if (!verify?.ok) {
+          toast("error", "Virhe", "Väärä PIN.");
+          return "";
+        }
+        state.session.pin = typed;
+        return typed;
+      }
+      // ==========================================================
+      // Actions
+      // ==========================================================
+      async function approvePendingRow(row, nextSeasonPaid) {
+        if (!isAdminRole(state.session.role)) return toast("error", "Virhe", "Ei oikeuksia.");
+        try {
+          const rev = row?.rev;
+          if (typeof rev !== "number") throw new Error("Rivin versiotieto puuttuu.");
+          const cleanNotes = stripStaffApprovalTag(row?.notes);
+          const patch = {};
+          if (String(row?.notes || "").trim() !== String(cleanNotes || "").trim()) patch.notes = cleanNotes;
+          if (typeof nextSeasonPaid === "boolean") patch.season_fee_paid = nextSeasonPaid;
+          await api.updateTire(row.id, rev, patch);
+          await loadTires();
+          toast("success", "Ilmoitus", "Vahvistettu.");
+        } catch (e) {
+          toast("error", "Virhe", e?.message || "Vahvistus epäonnistui.");
+        }
+      }
+
+      async function approvePendingCustomer(customer) {
+        if (!isAdminRole(state.session.role)) return toast("error", "Virhe", "Ei oikeuksia.");
+        try {
+          await api.updateCustomer(customer.id, {});
+          await loadCustomers();
+          toast("success", "Ilmoitus", "Asiakas vahvistettu.");
+        } catch (e) {
+          toast("error", "Virhe", e?.message || "Vahvistus epäonnistui.");
+        }
+      }
+
+      async function softDeleteRow(row) {
+        if (!isAdminRole(state.session.role)) return toast("error", "Virhe", "Ei oikeuksia.");
+        const pin = await requirePin({ title: "Vahvista poisto", message: "Syötä admin/master PIN poistoa varten." });
+        if (!pin) return;
+        try {
+          await api.deleteTireWithPin(row.id, state.session.hotelCode, pin);
+          await loadTires();
+          toast("success", "Ilmoitus", "Poistettu.");
+        } catch (e) {
+          toast("error", "Virhe", e?.message || "Poisto epäonnistui.");
+        }
+      }
+
+      async function hardDeleteRow(row) {
+        if (!isAdminRole(state.session.role)) return toast("error", "Virhe", "Ei oikeuksia.");
+        const pin = await requirePin({ title: "Vahvista pysyvä poisto", message: "Syötä admin/master PIN pysyvää poistoa varten.", forcePrompt: true });
+        if (!pin) return;
+        try {
+          await api.hardDeleteTireWithPin(row.id, state.session.hotelCode, pin);
+          await loadTires();
+          toast("success", "Ilmoitus", "Poistettu pysyvästi.");
+        } catch (e) {
+          toast("error", "Virhe", e?.message || "Pysyvä poisto epäonnistui.");
+        }
+      }
+
+      async function softDeleteCustomer(customer) {
+        if (!isAdminRole(state.session.role)) return toast("error", "Virhe", "Ei oikeuksia.");
+        const pin = await requirePin({ title: "Poista asiakas", message: "Syötä admin/master PIN." });
+        if (!pin) return;
+        try {
+          const out = await api.customerSoftDeleteCascadeWithPin(state.session.hotelCode, pin, customer.id);
+          if (out?.ok !== true) throw new Error(out?.reason || "Poisto epäonnistui.");
+          await ensureLoaded();
+          toast("success", "Ilmoitus", `Poistettu (soft). Renkaat: ${out?.tires_soft_deleted ?? 0}`);
+        } catch (e) {
+          toast("error", "Virhe", e?.message || "Poisto epäonnistui.");
+        }
+      }
+
+      async function hardDeleteCustomer(customer) {
+        if (!isAdminRole(state.session.role)) return toast("error", "Virhe", "Ei oikeuksia.");
+        const pin = await requirePin({ title: "Poista asiakas pysyvästi", message: "Syötä admin/master PIN.", forcePrompt: true });
+        if (!pin) return;
+        try {
+          const out = await api.customerHardDeleteCascadeWithPin(state.session.hotelCode, pin, customer.id);
+          if (out?.ok !== true) throw new Error(out?.reason || "Pysyvä poisto epäonnistui.");
+          await ensureLoaded();
+          toast("success", "Ilmoitus", `Poistettu pysyvästi. Renkaat: ${out?.tires_deleted ?? 0}`);
+        } catch (e) {
+          toast("error", "Virhe", e?.message || "Pysyvä poisto epäonnistui.");
+        }
+      }
+
+      async function addNewRow(form) {
+        const hotelCode = state.session.hotelCode;
+        const f = {
+          customer: String(form.customer || "").trim(),
+          phone: String(form.phone || "").trim(),
+          plate: String(form.plate || "").trim(),
+          tire_size: String(form.email || "").trim(),
+          location: String(form.location || "").trim(),
+          status: "Varastossa",
+          notes: String(form.notes || "").trim() || null,
+          season_fee_paid: !!form.season_fee_paid,
+        };
+        if (!f.customer || !f.phone || !f.plate || !f.location) {
+          toast("error", "Virhe", "Täytä pakolliset kentät: Asiakkaan nimi, Puhelinnumero, Rekisterinumero, Paikka.");
+          return;
+        }
+        try {
+          const duplicate = await api.findActiveTireByPlate(hotelCode, f.plate);
+          if (duplicate) {
+            toast("error", "Virhe", formatPlateDuplicateMessage(f.plate, duplicate));
+            return;
+          }
+
+          const existing = await api.getCustomerByName(hotelCode, f.customer);
+          if (!existing) {
+            await api.addCustomer(hotelCode, { nimi: f.customer, puhelin: f.phone, sahkoposti: f.tire_size });
           } else {
-            const row = blocks.find(x => x.id === id);
-            if(row) openBlockEdit(row);
+            const patch = {};
+            if (f.customer && existing.nimi !== f.customer) patch.nimi = f.customer;
+            if (f.phone && existing.puhelin !== f.phone) patch.puhelin = f.phone;
+            if (f.tire_size && existing.sahkoposti !== f.tire_size) patch.sahkoposti = f.tire_size;
+            if (Object.keys(patch).length) await api.updateCustomer(existing.id, patch);
+          }
+
+          const canManageSeasonFee = isAdminRole(state.session.role);
+          const payload = { ...f };
+          if (!canManageSeasonFee) {
+            payload.season_fee_paid = false;
+            payload.notes = ensureAdminApprovalTag(payload.notes);
+          }
+
+          await api.addTire(hotelCode, payload);
+          await ensureLoaded();
+          toast("success", "Ilmoitus", "Tallennettu.");
+          setTab("rows");
+        } catch (e) {
+          const msg = String(e?.message || "");
+          if (msg.toLowerCase().includes("duplicate") || msg.toLowerCase().includes("unique")) {
+            toast("error", "Virhe", "Hyllypaikka on jo varattu. Valitse toinen.");
+          } else {
+            toast("error", "Virhe", msg || "Tallennus epäonnistui.");
+          }
+        }
+      }
+
+      async function updateRowLocation(row, nextLocation) {
+        const loc = String(nextLocation || "").trim();
+        if (!loc) return toast("error", "Virhe", "Syötä hyllypaikka.");
+        try {
+          const rev = row?.rev;
+          if (typeof rev !== "number") throw new Error("Rivin versiotieto puuttuu.");
+          await api.updateTire(row.id, rev, { location: loc });
+          await loadTires();
+          toast("success", "Ilmoitus", "Hyllypaikka päivitetty.");
+        } catch (e) {
+          toast("error", "Virhe", e?.message || "Päivitys epäonnistui.");
+        }
+      }
+
+      function blocksForSelectedDay() {
+        const dateIso = state.data.calendarDate;
+        const startDay = new Date(`${dateIso}T00:00:00Z`).getTime();
+        const endDay = new Date(`${addDaysIso(dateIso, 1)}T00:00:00Z`).getTime();
+        return (state.data.blocks || []).filter((b) => {
+          const s = new Date(b.start_ts).getTime();
+          const e = new Date(b.end_ts).getTime();
+          return Number.isFinite(s) && Number.isFinite(e) && e > startDay && s < endDay;
+        });
+      }
+
+      async function calendarCloseDay() {
+        if (!isAdminRole(state.session.role)) return toast("error", "Virhe", "Ei oikeuksia.");
+        const pin = await requirePin({ title: "Päivän sulku", message: "Syötä admin/master PIN." });
+        if (!pin) return;
+        const dateIso = state.data.calendarDate;
+        const start = new Date(`${dateIso}T00:00:00`);
+        const end = new Date(`${addDaysIso(dateIso, 1)}T00:00:00`);
+        try {
+          const out = await api.createBlockWithPin(state.session.hotelCode, pin, {
+            start_ts: start.toISOString(),
+            end_ts: end.toISOString(),
+            kind: "CLOSED",
+            title: "Suljettu",
+            notes: null,
+          });
+          if (out?.ok === false && out?.reason === "wrong_pin") throw new Error("Väärä PIN.");
+          await loadCalendarWeek();
+          toast("success", "Ilmoitus", "Päivä suljettu.");
+        } catch (e) {
+          toast("error", "Virhe", e?.message || "Päivän sulku epäonnistui.");
+        }
+      }
+
+      async function calendarOpenDay() {
+        if (!isAdminRole(state.session.role)) return toast("error", "Virhe", "Ei oikeuksia.");
+        const pin = await requirePin({ title: "Päivän avaus", message: "Syötä admin/master PIN." });
+        if (!pin) return;
+        const dayBlocks = blocksForSelectedDay();
+        if (dayBlocks.length === 0) return toast("info", "Ilmoitus", "Ei sulkuja valitulle päivälle.");
+        try {
+          for (const b of dayBlocks) {
+            const out = await api.deleteBlockWithPin(state.session.hotelCode, pin, b.id);
+            if (out?.ok === false && out?.reason === "wrong_pin") throw new Error("Väärä PIN.");
+          }
+          await loadCalendarWeek();
+          toast("success", "Ilmoitus", "Päivä avattu.");
+        } catch (e) {
+          toast("error", "Virhe", e?.message || "Päivän avaus epäonnistui.");
+        }
+      }
+      // ==========================================================
+      // UI
+      // ==========================================================
+      const root = $("#root");
+      const nav = $("#nav");
+
+      nav.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-tab]");
+        if (!btn) return;
+        setTab(btn.getAttribute("data-tab"));
+      });
+
+      function renderTopbar() {
+        if (!state.session.ok) return;
+        $$("#nav button").forEach((b) => b.classList.toggle("active", b.getAttribute("data-tab") === state.tab));
+        $("#chipHotel").textContent = state.session.displayName || state.session.hotelCode || "—";
+        const whoName = state.session.username ? String(state.session.username) : (state.session.masterName || "Master");
+        const role = isAdminRole(state.session.role) ? "admin" : "staff";
+        $("#chipWho").textContent = `Kirjautunut: ${whoName} (${role})`;
+      }
+
+      function renderLogin() {
+        root.innerHTML = `
+          <div class="row">
+            <div class="col">
+              <div class="card pad">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap: 10px;">
+                  <div>
+                    <h1 class="h1">Kirjautuminen</h1>
+                    <p class="p">Syötä hotellikoodi ja henkilökohtainen PIN. PIN unohtuessa ota yhteyttä ylläpitäjään.</p>
+                  </div>
+                  <span class="pill mono">web</span>
+                </div>
+                <div class="field">
+                  <div class="label">Hotellikoodi <span class="req">*</span></div>
+                  <input id="loginHotel" placeholder="Syötä saamasi hotellikoodi" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <div class="label">PIN <span class="req">*</span></div>
+                  <input id="loginPin" type="password" placeholder="Syötä saamasi henkilökohtainen PIN-koodi" autocomplete="one-time-code" />
+                </div>
+                <div class="btn-row">
+                  <button class="btn primary" id="loginBtn" ${state.ui.loading ? "disabled" : ""}>Kirjaudu / Vahvista</button>
+                </div>
+                <div class="divider"></div>
+                <div class="p" style="margin:0">Ei Supabase Authia. Ei laitetallennusta. Istunto on vain muistissa.</div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card pad">
+                <h1 class="h1">Huom</h1>
+                <p class="p">Jos avaat tämän suoraan tiedostona ja kirjautuminen ei toimi, aja se paikallisella web-palvelimella (CORS/origin "null").</p>
+              </div>
+            </div>
+          </div>
+        `;
+
+        const hotel = $("#loginHotel", root);
+        const pin = $("#loginPin", root);
+        const btn = $("#loginBtn", root);
+        const go = () => doLogin(hotel.value, pin.value);
+        btn.addEventListener("click", go);
+        pin.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+        hotel.addEventListener("keydown", (e) => { if (e.key === "Enter") pin.focus(); });
+        setTimeout(() => hotel.focus(), 0);
+      }
+
+      function renderDashboard() {
+        const tires = state.data.tires || [];
+        const customers = state.data.customers || [];
+        const pendingRows = tires.filter((r) => isPendingRowApproval(r));
+        const activeRowCustomerKeys = new Set(tires.filter((r) => !r?.deleted).map((r) => normalizeNameKey(r?.customer)).filter(Boolean));
+        const pendingCustomers = (customers || []).filter((c) => {
+          if (!isPendingCustomerApproval(c)) return false;
+          const key = normalizeNameKey(c?.nimi || c?.customer);
+          if (!key) return true;
+          return !activeRowCustomerKeys.has(key);
+        });
+        const totalPending = pendingRows.length + pendingCustomers.length;
+        const canApprove = isAdminRole(state.session.role);
+
+        root.innerHTML = `
+          <div class="card pad">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap: 10px;">
+              <div>
+                <h1 class="h1">Etusivu</h1>
+                <p class="p">Hotelli: <span style="font-weight:900">${escapeHtml(state.session.displayName || state.session.hotelCode || "")}</span></p>
+              </div>
+              <div style="display:flex; gap: 8px; flex-wrap: wrap; justify-content:flex-end;">
+                <span class="pill">Rivit: ${tires.length}</span>
+                <span class="pill">Asiakkaat: ${customers.length}</span>
+                <span class="pill">Odottaa: ${totalPending}</span>
+              </div>
+            </div>
+            <div class="btn-row" style="margin-top: 10px;">
+              <button class="btn primary" id="dashNewRow">Uusi rivi</button>
+              <button class="btn ghost" id="dashRefresh">Päivitä</button>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top: 12px;">
+            <div class="col">
+              <div class="card pad">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap: 8px;">
+                  <div style="font-weight:900">Odottaa vahvistusta (rivit)</div>
+                  <span class="pill">${pendingRows.length}</span>
+                </div>
+                <div class="list">
+                  ${pendingRows.slice(0, 10).map((r) => {
+                    const meta = getStatusMeta(r.status, { isWaiting: r.waiting_pickup, isWorking: r.working });
+                    return `
+                      <div class="item">
+                        <div class="main">
+                          <div class="title">${escapeHtml(r.customer || "—")} · <span style="font-family:var(--mono)">${escapeHtml(prettyPlate(r.plate))}</span></div>
+                          <div class="meta">Paikka: ${escapeHtml(prettyLocation(r.location))} · Luonut: ${escapeHtml(formatActor(r.created_by_name, r.created_by_role))}</div>
+                          <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                            <span class="pill" style="background:${meta.bg};border-color:${meta.border};color:${meta.color}">${escapeHtml(meta.label)}</span>
+                            <span class="pill">Odottaa admin-hyväksyntää</span>
+                          </div>
+                        </div>
+                        <div class="actions">
+                          ${canApprove ? `<button class="btn primary" data-approve-row="${escapeHtml(r.id)}">Hyväksy</button>` : ``}
+                        </div>
+                      </div>
+                    `;
+                  }).join("")}
+                  ${pendingRows.length === 0 ? `<div class="muted">Ei odottavia rivejä.</div>` : ``}
+                </div>
+              </div>
+            </div>
+
+            <div class="col">
+              <div class="card pad">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap: 8px;">
+                  <div style="font-weight:900">Odottaa vahvistusta (asiakkaat)</div>
+                  <span class="pill">${pendingCustomers.length}</span>
+                </div>
+                <div class="list">
+                  ${pendingCustomers.slice(0, 10).map((c) => {
+                    const name = c.nimi || c.customer || "—";
+                    const phone = c.puhelin || c.phone || "";
+                    const email = c.sahkoposti || c.email || "";
+                    return `
+                      <div class="item">
+                        <div class="main">
+                          <div class="title">${escapeHtml(name)}</div>
+                          <div class="meta">${escapeHtml(phone)} ${email ? "· " + escapeHtml(email) : ""}</div>
+                          <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                            <span class="pill">Odottaa admin-hyväksyntää</span>
+                            <span class="pill">Luonut: ${escapeHtml(formatActor(c.created_by_name || c.luonut_nimi, c.created_by_role || c.luonut_rooli))}</span>
+                          </div>
+                        </div>
+                        <div class="actions">
+                          ${canApprove ? `<button class="btn primary" data-approve-customer="${escapeHtml(c.id)}">Hyväksy</button>` : ``}
+                        </div>
+                      </div>
+                    `;
+                  }).join("")}
+                  ${pendingCustomers.length === 0 ? `<div class="muted">Ei odottavia asiakkaita.</div>` : ``}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        $("#dashNewRow", root).addEventListener("click", () => openNewRowModal());
+        $("#dashRefresh", root).addEventListener("click", () => ensureLoaded());
+
+        $$('[data-approve-row]', root).forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-approve-row');
+            const row = (state.data.tires || []).find((r) => String(r.id) === String(id));
+            if (!row) return;
+            modalConfirm("Hyväksy lisätty rivi", "Valitse kausimaksun tila:", [
+              { text: "Peruuta", kind: "ghost" },
+              { text: "Maksamaton", kind: "primary", onPress: () => approvePendingRow(row, false) },
+              { text: "Maksettu", kind: "primary", onPress: () => approvePendingRow(row, true) },
+            ]);
+          });
+        });
+        $$('[data-approve-customer]', root).forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-approve-customer');
+            const customer = (state.data.customers || []).find((c) => String(c.id) === String(id));
+            if (!customer) return;
+            approvePendingCustomer(customer);
+          });
+        });
+      }
+      function renderWorklist() {
+        const rows = state.data.tires || [];
+        const customers = state.data.customers || [];
+        const pendingApprovalRows = rows.filter((r) => isPendingRowApproval(r));
+        const activeRowCustomerKeys = new Set(rows.filter((r) => !r?.deleted).map((r) => normalizeNameKey(r?.customer)).filter(Boolean));
+        const pendingCustomerApprovals = (customers || []).filter((c) => {
+          if (!isPendingCustomerApproval(c)) return false;
+          const key = normalizeNameKey(c?.nimi || c?.customer);
+          if (!key) return true;
+          return !activeRowCustomerKeys.has(key);
+        });
+
+        root.innerHTML = `
+          <div class="card pad">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap: 10px;">
+              <div>
+                <h1 class="h1">Työlista</h1>
+                <p class="p">Näytetään erityisesti odottavat vahvistukset.</p>
+              </div>
+              <span class="pill">Rivit: ${rows.length}</span>
+            </div>
+            <div class="btn-row" style="margin-top: 10px;">
+              <button class="btn ghost" id="wlRefresh">Päivitä</button>
+            </div>
+          </div>
+
+          <div class="card pad" style="margin-top: 12px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <div style="font-weight:900">Odottaa vahvistusta</div>
+              <span class="pill">${pendingApprovalRows.length + pendingCustomerApprovals.length}</span>
+            </div>
+            <div class="divider"></div>
+            <div class="list">
+              ${pendingApprovalRows.map((r) => {
+                const meta = getStatusMeta(r.status, { isWaiting: r.waiting_pickup, isWorking: r.working });
+                return `
+                  <div class="item">
+                    <div class="main">
+                      <div class="title">${escapeHtml(r.customer || "—")} · <span style="font-family:var(--mono)">${escapeHtml(prettyPlate(r.plate))}</span></div>
+                      <div class="meta">Paikka: ${escapeHtml(prettyLocation(r.location))} · Luonut: ${escapeHtml(formatActor(r.created_by_name, r.created_by_role))}</div>
+                      <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                        <span class="pill" style="background:${meta.bg};border-color:${meta.border};color:${meta.color}">${escapeHtml(meta.label)}</span>
+                        <span class="pill">Odottaa admin-hyväksyntää</span>
+                      </div>
+                    </div>
+                    <div class="actions">
+                      ${isAdminRole(state.session.role) ? `<button class="btn primary" data-approve-row="${escapeHtml(r.id)}">Hyväksy</button>` : `<span class="pill">Ei oikeuksia</span>`}
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+
+              ${pendingCustomerApprovals.map((c) => {
+                const name = c.nimi || c.customer || "—";
+                return `
+                  <div class="item">
+                    <div class="main">
+                      <div class="title">${escapeHtml(name)}</div>
+                      <div class="meta">Odottaa admin-hyväksyntää</div>
+                    </div>
+                    <div class="actions">
+                      ${isAdminRole(state.session.role) ? `<button class="btn primary" data-approve-customer="${escapeHtml(c.id)}">Hyväksy</button>` : `<span class="pill">Ei oikeuksia</span>`}
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+
+              ${(pendingApprovalRows.length + pendingCustomerApprovals.length) === 0 ? `<div class="muted">Ei odottavia vahvistuksia.</div>` : ``}
+            </div>
+          </div>
+        `;
+
+        $("#wlRefresh", root).addEventListener("click", () => ensureLoaded());
+
+        $$('[data-approve-row]', root).forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-approve-row');
+            const row = (state.data.tires || []).find((r) => String(r.id) === String(id));
+            if (!row) return;
+            modalConfirm("Hyväksy lisätty rivi", "Valitse kausimaksun tila:", [
+              { text: "Peruuta", kind: "ghost" },
+              { text: "Maksamaton", kind: "primary", onPress: () => approvePendingRow(row, false) },
+              { text: "Maksettu", kind: "primary", onPress: () => approvePendingRow(row, true) },
+            ]);
+          });
+        });
+        $$('[data-approve-customer]', root).forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-approve-customer');
+            const customer = (state.data.customers || []).find((c) => String(c.id) === String(id));
+            if (!customer) return;
+            approvePendingCustomer(customer);
+          });
+        });
+      }
+
+      function renderCustomers() {
+        const customers = state.data.customers || [];
+        root.innerHTML = `
+          <div class="card pad">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap: 10px;">
+              <div>
+                <h1 class="h1">Asiakkaat</h1>
+                <p class="p">Lista ei sisällä poistettuja (soft).</p>
+              </div>
+              <span class="pill">Yhteensä: ${customers.length}</span>
+            </div>
+            <div class="btn-row">
+              <button class="btn ghost" id="custRefresh">Päivitä</button>
+            </div>
+          </div>
+
+          <div class="card pad" style="margin-top: 12px;">
+            <div class="field" style="margin:0">
+              <div class="label">Hae</div>
+              <input id="custSearch" placeholder="Nimi / puhelin / sähköposti" />
+            </div>
+            <div class="divider"></div>
+            <div class="list" id="custList"></div>
+          </div>
+        `;
+
+        $("#custRefresh", root).addEventListener("click", () => loadCustomers());
+        const list = $("#custList", root);
+        const search = $("#custSearch", root);
+
+        const renderList = () => {
+          const q = String(search.value || "").trim().toLowerCase();
+          const filtered = !q ? customers : customers.filter((c) => {
+            const name = String(c.nimi || c.customer || "").toLowerCase();
+            const phone = String(c.puhelin || c.phone || "").toLowerCase();
+            const email = String(c.sahkoposti || c.email || "").toLowerCase();
+            return name.includes(q) || phone.includes(q) || email.includes(q);
+          });
+
+          list.innerHTML = (filtered.map((c) => {
+            const name = c.nimi || c.customer || "—";
+            const phone = c.puhelin || c.phone || "";
+            const email = c.sahkoposti || c.email || "";
+            const pending = isPendingCustomerApproval(c);
+            return `
+              <div class="item">
+                <div class="main">
+                  <div class="title">${escapeHtml(name)}</div>
+                  <div class="meta">${escapeHtml(phone)} ${email ? "· " + escapeHtml(email) : ""}</div>
+                  <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                    ${pending ? `<span class="pill">Odottaa admin-hyväksyntää</span>` : ``}
+                    <span class="pill">Luonut: ${escapeHtml(formatActor(c.created_by_name || c.luonut_nimi, c.created_by_role || c.luonut_rooli))}</span>
+                    <span class="pill">Päivitetty: ${escapeHtml(formatActor(c.updated_by_name || c.paivittanyt_nimi, c.updated_by_role || c.paivittanyt_rooli))}</span>
+                  </div>
+                </div>
+                <div class="actions">
+                  ${isAdminRole(state.session.role) ? `<button class="btn danger" data-cust-soft="${escapeHtml(c.id)}">Poista</button>` : ``}
+                  ${isAdminRole(state.session.role) ? `<button class="btn danger" data-cust-hard="${escapeHtml(c.id)}">Poista pysyvästi</button>` : ``}
+                </div>
+              </div>
+            `;
+          }).join("")) || `<div class="muted">Ei asiakkaita.</div>`;
+
+          $$('[data-cust-soft]', list).forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const id = btn.getAttribute('data-cust-soft');
+              const c = customers.find((x) => String(x.id) === String(id));
+              if (!c) return;
+              modalConfirm("Poista asiakas", "Poistetaan asiakas ja renkaat (soft).", [
+                { text: "Peruuta", kind: "ghost" },
+                { text: "Poista", kind: "danger", onPress: () => softDeleteCustomer(c) },
+              ]);
+            });
+          });
+          $$('[data-cust-hard]', list).forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const id = btn.getAttribute('data-cust-hard');
+              const c = customers.find((x) => String(x.id) === String(id));
+              if (!c) return;
+              modalConfirm("Poista asiakas pysyvästi", "Poistetaan asiakas ja renkaat tietokannasta (HARD).", [
+                { text: "Peruuta", kind: "ghost" },
+                { text: "Poista pysyvästi", kind: "danger", onPress: () => hardDeleteCustomer(c) },
+              ]);
+            });
+          });
+        };
+
+        search.addEventListener("input", renderList);
+        renderList();
+      }
+      function openNewRowModal() {
+        const canManageSeasonFee = isAdminRole(state.session.role);
+        const html = `
+          <div class="msg">Lisää uusi rivi. Staff: kausimaksu ei valittavissa ja merkintä menee odottamaan admin-hyväksyntää.</div>
+          <div class="field">
+            <div class="label">Asiakkaan nimi <span class="req">*</span></div>
+            <input id="nrName" />
+          </div>
+          <div class="field">
+            <div class="label">Puhelinnumero <span class="req">*</span></div>
+            <input id="nrPhone" />
+          </div>
+          <div class="field">
+            <div class="label">Sähköposti</div>
+            <input id="nrEmail" />
+          </div>
+          <div class="field">
+            <div class="label">Rekisterinumero <span class="req">*</span></div>
+            <input id="nrPlate" />
+            <div class="p danger-text" id="nrDup" style="display:none;margin:0"></div>
+          </div>
+          <div class="field">
+            <div class="label">Hyllypaikka <span class="req">*</span></div>
+            <input id="nrLoc" placeholder="esim. H01-A-01" />
+          </div>
+          <div class="field">
+            <div class="label">Huomiot</div>
+            <textarea id="nrNotes"></textarea>
+          </div>
+          <div class="field" ${canManageSeasonFee ? "" : "style='opacity:0.6'"}>
+            <div class="label">Kausimaksu</div>
+            <select id="nrSeason" ${canManageSeasonFee ? "" : "disabled"}>
+              <option value="false">Maksamaton</option>
+              <option value="true">Maksettu</option>
+            </select>
+          </div>
+          <div class="btn-row" style="justify-content:flex-end;">
+            <button class="btn ghost" id="nrCancel">Peruuta</button>
+            <button class="btn primary" id="nrSave">Tallenna</button>
+          </div>
+        `;
+
+        openModal("Uusi rivi", html);
+        const plate = $("#nrPlate", modalBody);
+        const dup = $("#nrDup", modalBody);
+        let dupTimer = null;
+
+        plate.addEventListener("input", () => {
+          const v = String(plate.value || "").trim();
+          clearTimeout(dupTimer);
+          if (!v) {
+            dup.style.display = "none";
+            dup.textContent = "";
+            return;
+          }
+          dupTimer = setTimeout(async () => {
+            try {
+              const found = await api.findActiveTireByPlate(state.session.hotelCode, v);
+              if (found) {
+                dup.textContent = formatPlateDuplicateMessage(v, found);
+                dup.style.display = "";
+              } else {
+                dup.style.display = "none";
+                dup.textContent = "";
+              }
+            } catch {
+              // ignore
+            }
+          }, 350);
+        });
+
+        $("#nrCancel", modalBody).addEventListener("click", closeModal);
+        $("#nrSave", modalBody).addEventListener("click", async () => {
+          const form = {
+            customer: $("#nrName", modalBody).value,
+            phone: $("#nrPhone", modalBody).value,
+            email: $("#nrEmail", modalBody).value,
+            plate: $("#nrPlate", modalBody).value,
+            location: $("#nrLoc", modalBody).value,
+            notes: $("#nrNotes", modalBody).value,
+            season_fee_paid: $("#nrSeason", modalBody).value === "true",
+          };
+          closeModal();
+          await addNewRow(form);
+        });
+
+        setTimeout(() => $("#nrName", modalBody).focus(), 0);
+      }
+
+      function openRowDetailsModal(row) {
+        const isAdmin = isAdminRole(state.session.role);
+        const meta = getStatusMeta(row.status, { isWaiting: row.waiting_pickup, isWorking: row.working });
+        const season = isSeasonPaid(row.season_fee_paid)
+          ? { t: "Maksettu", bg: "#eef4ff", border: "#c7d2fe", color: "#1e429f" }
+          : { t: "Maksamaton", bg: "#fff7ed", border: "#fed7aa", color: "#9a3412" };
+        const pending = isPendingRowApproval(row);
+
+        const html = `
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap: 10px;">
+            <div>
+              <div style="font-weight:900; font-size:16px;">${escapeHtml(row.customer || "—")} · <span style="font-family:var(--mono)">${escapeHtml(prettyPlate(row.plate))}</span></div>
+              <div class="p" style="margin-top:4px;">${escapeHtml(row.phone || "")} ${row.tire_size ? "· " + escapeHtml(row.tire_size) : ""}</div>
+            </div>
+            <div class="menu" data-row-menu>
+              ${isAdmin ? `<button class="btn danger" data-row-menu-btn>Poista</button>` : ``}
+              <div class="menu-pop" id="rowMenuPop">
+                <button class="danger" id="rowSoftDel">Poista</button>
+                <button class="danger" id="rowHardDel">Poista pysyvästi</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">
+            <span class="pill" style="background:${meta.bg};border-color:${meta.border};color:${meta.color}">${escapeHtml(meta.label)}</span>
+            <span class="pill" style="background:${season.bg};border-color:${season.border};color:${season.color}">${escapeHtml(season.t)}</span>
+            ${pending ? `<span class="pill">Odottaa vahvistusta</span>` : ``}
+          </div>
+
+          <div class="divider"></div>
+
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+            <div class="field" style="flex:1; margin:0">
+              <div class="label">Hyllypaikka</div>
+              <input id="rdLoc" value="${escapeHtml(String(row.location || ""))}" />
+            </div>
+            <div style="margin-top: 18px;">
+              <button class="btn ghost" id="rdLocSave" style="white-space:nowrap;">Muokkaa</button>
+            </div>
+          </div>
+          <div class="p" style="margin-top: 6px;">${isAdmin ? "Admin voi muokata muitakin tietoja mobiilissa." : "Staff voi muokata vain hyllypaikkaa."}</div>
+
+          <div class="divider"></div>
+
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <span class="pill">Luonut: ${escapeHtml(formatActor(row.created_by_name, row.created_by_role))}</span>
+            <span class="pill">Päivitetty: ${escapeHtml(formatActor(row.updated_by_name, row.updated_by_role))}</span>
+            <span class="pill">Luovutti: ${escapeHtml(formatActor(row.delivered_by_name, row.delivered_by_role))}</span>
+          </div>
+
+          <div class="field">
+            <div class="label">Huomiot</div>
+            <textarea readonly>${escapeHtml(String(row.notes || ""))}</textarea>
+          </div>
+
+          ${isAdmin && pending ? `
+            <div class="btn-row" style="justify-content:flex-end;">
+              <button class="btn primary" id="rdApprovePaid">Hyväksy (Maksettu)</button>
+              <button class="btn primary" id="rdApproveUnpaid">Hyväksy (Maksamaton)</button>
+            </div>
+          ` : ``}
+        `;
+
+        openModal("Rivin tiedot", html);
+
+        const menuBtn = $("[data-row-menu-btn]", modalBody);
+        if (menuBtn) {
+          const pop = $("#rowMenuPop", modalBody);
+          menuBtn.addEventListener("click", () => pop.classList.toggle("open"));
+          $("#rowSoftDel", modalBody).addEventListener("click", () => {
+            pop.classList.remove("open");
+            modalConfirm("Poista rivi", "Poistetaan rivi (soft).", [
+              { text: "Peruuta", kind: "ghost" },
+              { text: "Poista", kind: "danger", onPress: () => { closeModal(); softDeleteRow(row); } },
+            ]);
+          });
+          $("#rowHardDel", modalBody).addEventListener("click", () => {
+            pop.classList.remove("open");
+            modalConfirm("Poista rivi pysyvästi", "Poistetaan rivi tietokannasta (HARD).", [
+              { text: "Peruuta", kind: "ghost" },
+              { text: "Poista pysyvästi", kind: "danger", onPress: () => { closeModal(); hardDeleteRow(row); } },
+            ]);
+          });
+        }
+
+        $("#rdLocSave", modalBody).addEventListener("click", async () => {
+          const next = $("#rdLoc", modalBody).value;
+          closeModal();
+          await updateRowLocation(row, next);
+        });
+
+        if (isAdmin && pending) {
+          const paid = $("#rdApprovePaid", modalBody);
+          const unpaid = $("#rdApproveUnpaid", modalBody);
+          if (paid) paid.addEventListener("click", () => { closeModal(); approvePendingRow(row, true); });
+          if (unpaid) unpaid.addEventListener("click", () => { closeModal(); approvePendingRow(row, false); });
+        }
+      }
+
+      function renderRows() {
+        const tires = state.data.tires || [];
+        root.innerHTML = `
+          <div class="card pad">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap: 10px;">
+              <div>
+                <h1 class="h1">Rivit</h1>
+                <p class="p">Staff voi muokata vain hyllypaikkaa. Admin voi hyväksyä ja poistaa.</p>
+              </div>
+              <span class="pill">Näytetään: ${tires.length}</span>
+            </div>
+            <div class="btn-row">
+              <button class="btn primary" id="rowsNew">Uusi rivi</button>
+              <button class="btn ghost" id="rowsRefresh">Päivitä</button>
+            </div>
+          </div>
+
+          <div class="card pad" style="margin-top: 12px;">
+            <div class="field" style="margin:0">
+              <div class="label">Hae</div>
+              <input id="rowsSearch" placeholder="Nimi / rek / paikka" />
+            </div>
+            <div class="divider"></div>
+            <div class="list" id="rowsList"></div>
+          </div>
+        `;
+
+        $("#rowsNew", root).addEventListener("click", () => openNewRowModal());
+        $("#rowsRefresh", root).addEventListener("click", () => loadTires());
+
+        const list = $("#rowsList", root);
+        const search = $("#rowsSearch", root);
+
+        const renderList = () => {
+          const q = String(search.value || "").trim().toLowerCase();
+          const filtered = !q ? tires : tires.filter((r) => {
+            const name = String(r.customer || "").toLowerCase();
+            const plate = String(r.plate || "").toLowerCase();
+            const loc = String(r.location || "").toLowerCase();
+            return name.includes(q) || plate.includes(q) || loc.includes(q);
+          });
+
+          list.innerHTML = (filtered.map((r) => {
+            const meta = getStatusMeta(r.status, { isWaiting: r.waiting_pickup, isWorking: r.working });
+            const pending = isPendingRowApproval(r);
+            const season = isSeasonPaid(r.season_fee_paid)
+              ? { t: "Maksettu", bg: "#eef4ff", border: "#c7d2fe", color: "#1e429f" }
+              : { t: "Maksamaton", bg: "#fff7ed", border: "#fed7aa", color: "#9a3412" };
+            return `
+              <div class="item">
+                <div class="main">
+                  <div class="title">${escapeHtml(r.customer || "—")} · <span style="font-family:var(--mono)">${escapeHtml(prettyPlate(r.plate))}</span></div>
+                  <div class="meta">Paikka: ${escapeHtml(prettyLocation(r.location))}</div>
+                  <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                    <span class="pill" style="background:${meta.bg};border-color:${meta.border};color:${meta.color}">${escapeHtml(meta.label)}</span>
+                    <span class="pill" style="background:${season.bg};border-color:${season.border};color:${season.color}">${escapeHtml(season.t)}</span>
+                    ${pending ? `<span class="pill">Odottaa vahvistusta</span>` : ``}
+                  </div>
+                </div>
+                <div class="actions">
+                  <button class="btn ghost" data-row-open="${escapeHtml(r.id)}">Avaa</button>
+                </div>
+              </div>
+            `;
+          }).join("")) || `<div class="muted">Ei rivejä.</div>`;
+
+          $$('[data-row-open]', list).forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const id = btn.getAttribute('data-row-open');
+              const row = tires.find((x) => String(x.id) === String(id));
+              if (!row) return;
+              openRowDetailsModal(row);
+            });
+          });
+        };
+
+        search.addEventListener("input", renderList);
+        renderList();
+      }
+      function renderCalendar() {
+        const dateIso = state.data.calendarDate;
+        const blocks = blocksForSelectedDay();
+        const closed = blocks.length > 0;
+
+        root.innerHTML = `
+          <div class="card pad">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap: 10px;">
+              <div>
+                <h1 class="h1">Kalenteri</h1>
+                <p class="p">Päivän sulku/avaus (admin/master PIN).</p>
+              </div>
+              <span class="pill">${closed ? "Suljettu" : "Auki"}</span>
+            </div>
+            <div class="row" style="margin-top: 10px;">
+              <div class="col" style="min-width: 240px;">
+                <div class="field" style="margin:0">
+                  <div class="label">Päivä</div>
+                  <input id="calDate" type="date" value="${escapeHtml(dateIso)}" />
+                </div>
+              </div>
+              <div class="col" style="min-width: 240px;">
+                <div class="btn-row" style="margin-top: 20px; justify-content:flex-end;">
+                  <button class="btn ghost" id="calRefresh">Päivitä</button>
+                  <button class="btn primary" id="calClose" ${isAdminRole(state.session.role) ? "" : "disabled"}>Sulje päivä</button>
+                  <button class="btn danger" id="calOpen" ${isAdminRole(state.session.role) ? "" : "disabled"}>Avaa päivä</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card pad" style="margin-top: 12px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap: 8px;">
+              <div style="font-weight:900">Sulut (valittu päivä)</div>
+              <span class="pill">${blocks.length}</span>
+            </div>
+            <div class="divider"></div>
+            <div class="list">
+              ${blocks.map((b) => {
+                const s = new Date(b.start_ts);
+                const e = new Date(b.end_ts);
+                const label = `${s.toLocaleString()} → ${e.toLocaleString()}`;
+                return `
+                  <div class="item">
+                    <div class="main">
+                      <div class="title">${escapeHtml(String(b.title || b.kind || "Sulku"))}</div>
+                      <div class="meta">${escapeHtml(label)}</div>
+                    </div>
+                    <div class="actions">
+                      <button class="btn danger" data-del-block="${escapeHtml(b.id)}" ${isAdminRole(state.session.role) ? "" : "disabled"}>Poista sulku</button>
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+              ${blocks.length === 0 ? `<div class="muted">Ei sulkuja.</div>` : ``}
+            </div>
+          </div>
+        `;
+
+        $("#calDate", root).addEventListener("change", (e) => {
+          state.data.calendarDate = String(e.target.value || todayStrLocal());
+          loadCalendarWeek();
+        });
+        $("#calRefresh", root).addEventListener("click", () => loadCalendarWeek());
+        $("#calClose", root).addEventListener("click", () => calendarCloseDay());
+        $("#calOpen", root).addEventListener("click", () => calendarOpenDay());
+
+        $$('[data-del-block]', root).forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-del-block');
+            const pin = await requirePin({ title: "Poista sulku", message: "Syötä admin/master PIN." });
+            if (!pin) return;
+            const out = await api.deleteBlockWithPin(state.session.hotelCode, pin, id);
+            if (out?.ok === false && out?.reason === "wrong_pin") return toast("error", "Virhe", "Väärä PIN.");
+            await loadCalendarWeek();
+            toast("success", "Ilmoitus", "Sulku poistettu.");
+          });
+        });
+      }
+
+      function openAddLocationModal() {
+        const html = `
+          <div class="msg">Lisää hyllypaikka.</div>
+          <div class="row">
+            <div class="col">
+              <div class="field" style="margin-top:10px">
+                <div class="label">Hylly (numero)</div>
+                <input id="locShelf" type="number" min="1" max="99" value="1" />
+              </div>
+            </div>
+            <div class="col">
+              <div class="field" style="margin-top:10px">
+                <div class="label">Rivi (kirjain)</div>
+                <input id="locRow" maxlength="1" value="A" />
+              </div>
+            </div>
+            <div class="col">
+              <div class="field" style="margin-top:10px">
+                <div class="label">Paikka (numero)</div>
+                <input id="locSpot" type="number" min="1" max="99" value="1" />
+              </div>
+            </div>
+          </div>
+          <div class="btn-row" style="justify-content:flex-end;">
+            <button class="btn ghost" id="locCancel">Peruuta</button>
+            <button class="btn primary" id="locSave">Tallenna</button>
+          </div>
+        `;
+        openModal("Lisää hyllypaikka", html);
+        $("#locCancel", modalBody).addEventListener("click", closeModal);
+        $("#locSave", modalBody).addEventListener("click", async () => {
+          const shelf = parseInt($("#locShelf", modalBody).value, 10) || 1;
+          const rowLetter = String($("#locRow", modalBody).value || "A").trim().toUpperCase().slice(0, 1) || "A";
+          const spot = parseInt($("#locSpot", modalBody).value, 10) || 1;
+          closeModal();
+          try {
+            await api.addLocation(state.session.hotelCode, shelf, rowLetter, spot);
+            await loadLocations();
+            toast("success", "Ilmoitus", "Lisätty.");
+          } catch (e) {
+            toast("error", "Virhe", e?.message || "Lisäys epäonnistui");
           }
         });
-      });
-
-      setStatus("Valmis.", "ok");
-    }
-
-    // ===== Modal Save/Delete =====
-    async function fillFromPlateIfMatch(payload){
-      // same logic for calendar: if plate matches tires.rekisteri, offer fill name/phone
-      const hotel_code = $("hotelCode").value.trim();
-      if(!payload.plate) return payload;
-
-      const { data: tmatch } = await supabase
-        .from("tires")
-        .select("nimi,puhelin")
-        .eq("hotel_code", hotel_code)
-        .eq("rekisteri", payload.plate)
-        .eq("poistettu", false)
-        .limit(1);
-
-      if(tmatch?.length){
-        const t = tmatch[0];
-        const ok = confirm(`Rekisteri löytyy varastosta.\nTäytetäänkö nimi/puhelin?\n\n${t.nimi||""} / ${t.puhelin||""}`);
-        if(ok){
-          payload.customer_name = payload.customer_name || t.nimi || payload.customer_name;
-          payload.phone = payload.phone || t.puhelin || payload.phone;
-        }
+        setTimeout(() => $("#locShelf", modalBody).focus(), 0);
       }
-      return payload;
-    }
 
-    $("formSave").onclick = async () => {
-      const hotel_code = $("hotelCode").value.trim();
-      if(!hotel_code){ setStatus("Anna hotel_code.", "err"); return; }
-
-      try{
-        if(modalCtx.table==="customers"){
-          const payload = {
-            hotel_code,
-            nimi: $("f_nimi").value.trim(),
-            puhelin: $("f_puhelin").value.trim() || null,
-            sahkoposti: $("f_sahkoposti").value.trim() || null,
-            poistettu: $("f_poistettu").value === "true",
-            paivitetty: new Date().toISOString()
-          };
-          if(!payload.nimi) return setStatus("Nimi puuttuu.", "err");
-
-          const q = (modalCtx.mode==="add")
-            ? supabase.from("customers").insert(payload)
-            : supabase.from("customers").update(payload).eq("id", modalCtx.row.id);
-
-          const { error } = await q;
-          if(error) throw error;
-
+      function openUpsertUserModal(existing = null) {
+        const html = `
+          <div class="msg">Luo / päivitä käyttäjä. (Jos backendissä ei ole upsert_hotel_user_pin_with_pin, käytetään master-PIN:ä.)</div>
+          <div class="field" style="margin-top:10px">
+            <div class="label">Käyttäjänimi <span class="req">*</span></div>
+            <input id="uName" value="${escapeHtml(String(existing?.username || ""))}" ${existing?.is_master ? "disabled" : ""}/>
+          </div>
+          <div class="field">
+            <div class="label">Uusi PIN <span class="req">*</span></div>
+            <input id="uPin" type="password" />
+          </div>
+          <div class="field">
+            <div class="label">Rooli</div>
+            <select id="uRole">
+              <option value="staff">staff</option>
+              <option value="admin">admin</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="label">Aktiivinen</div>
+            <select id="uActive">
+              <option value="true">kyllä</option>
+              <option value="false">ei</option>
+            </select>
+          </div>
+          <div class="btn-row" style="justify-content:flex-end;">
+            <button class="btn ghost" id="uCancel">Peruuta</button>
+            <button class="btn primary" id="uSave">Tallenna</button>
+          </div>
+        `;
+        openModal("Luo / päivitä käyttäjä", html);
+        $("#uRole", modalBody).value = existing?.role === "admin" ? "admin" : "staff";
+        $("#uActive", modalBody).value = existing?.is_active === false ? "false" : "true";
+        $("#uCancel", modalBody).addEventListener("click", closeModal);
+        $("#uSave", modalBody).addEventListener("click", async () => {
+          const username = String($("#uName", modalBody).value || "").trim();
+          const newPin = String($("#uPin", modalBody).value || "").trim();
+          const role = $("#uRole", modalBody).value === "admin" ? "admin" : "staff";
+          const isActive = $("#uActive", modalBody).value === "true";
+          if (!username || !newPin) return toast("error", "Virhe", "Täytä käyttäjänimi ja uusi PIN.");
           closeModal();
-          await loadCustomers();
+
+          const pinForAction = await requirePin({ title: "Vahvista", message: "Syötä admin/master PIN." });
+          if (!pinForAction) return;
+
+          let out = await api.upsertHotelUserPinWithPin(state.session.hotelCode, pinForAction, username, newPin, role, isActive);
+          if (out?.ok !== true && out?.reason === "missing_function") {
+            const masterPin = await requirePin({ title: "Master PIN", message: "Syötä master-PIN käyttäjän luontiin/päivitykseen.", forcePrompt: true, prefill: state.session.pinSource === "master" ? (state.session.pin || "") : "" });
+            if (!masterPin) return;
+            out = await api.upsertHotelUserPinWithMasterPin(state.session.hotelCode, masterPin, username, newPin, role, isActive);
+          }
+
+          if (out?.ok !== true) {
+            const reason = String(out?.reason || "");
+            if (reason === "wrong_master_pin" || reason === "wrong_pin") toast("error", "Virhe", "Väärä PIN.");
+            else toast("error", "Virhe", out?.message || reason || "Tallennus epäonnistui.");
+            return;
+          }
+
+          await loadUsers();
+          toast("success", "Ilmoitus", "Tallennettu.");
+        });
+        setTimeout(() => $("#uName", modalBody).focus(), 0);
+      }
+
+      function openOwnPinModal() {
+        const html = `
+          <div class="msg">Vaihda oma PIN. Tämä ei tallenna PINiä laitteelle.</div>
+          <div class="field" style="margin-top:10px">
+            <div class="label">Käyttäjänimi</div>
+            <input id="opUser" value="${escapeHtml(String(state.session.username || ""))}" />
+          </div>
+          <div class="field">
+            <div class="label">Vanha PIN</div>
+            <input id="opOld" type="password" />
+          </div>
+          <div class="field">
+            <div class="label">Uusi PIN</div>
+            <input id="opNew" type="password" />
+          </div>
+          <div class="btn-row" style="justify-content:flex-end;">
+            <button class="btn ghost" id="opCancel">Peruuta</button>
+            <button class="btn primary" id="opSave">Tallenna</button>
+          </div>
+        `;
+        openModal("Vaihda oma PIN", html);
+        $("#opCancel", modalBody).addEventListener("click", closeModal);
+        $("#opSave", modalBody).addEventListener("click", async () => {
+          const username = String($("#opUser", modalBody).value || "").trim();
+          const oldPin = String($("#opOld", modalBody).value || "").trim();
+          const newPin = String($("#opNew", modalBody).value || "").trim();
+          closeModal();
+          if (!username || !oldPin || !newPin) return toast("error", "Virhe", "Täytä kaikki kentät.");
+          try {
+            const out = await api.changeOwnPin(state.session.hotelCode, username, oldPin, newPin);
+            if (out?.ok !== true) {
+              const reason = String(out?.reason || "");
+              if (reason === "wrong_pin") toast("error", "Virhe", "Väärä PIN.");
+              else toast("error", "Virhe", out?.message || reason || "PINin vaihto epäonnistui.");
+              return;
+            }
+            state.session.pin = newPin;
+            toast("success", "Ilmoitus", "PIN vaihdettu.");
+          } catch (e) {
+            toast("error", "Virhe", e?.message || "PINin vaihto epäonnistui.");
+          }
+        });
+      }
+      function renderSettings() {
+        const isAdmin = isAdminRole(state.session.role);
+
+        root.innerHTML = `
+          <div class="card pad">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap: 10px;">
+              <div>
+                <h1 class="h1">Asetukset</h1>
+                <p class="p">Turva-asetuksista vain automaattinen kirjaus ulos. Ei laitetallennusta.</p>
+              </div>
+              <button class="btn danger" id="logoutBtn">Kirjaudu ulos</button>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top: 12px;">
+            <div class="col">
+              <div class="card pad">
+                <div style="font-weight:900">Turva</div>
+                <div class="field">
+                  <div class="label">Automaattinen kirjaus ulos (min)</div>
+                  <input id="autoLogout" type="number" min="0" max="240" value="${escapeHtml(String(state.security.autoLogoutMinutes))}" />
+                  <div class="p" style="margin:0">0 = pois päältä</div>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card pad">
+                <div style="font-weight:900">Oma PIN</div>
+                <p class="p">Vaihda oma PIN, jos backendissä on <span style="font-family:var(--mono)">change_hotel_user_pin_with_old_pin</span>.</p>
+                <div class="btn-row">
+                  <button class="btn ghost" id="ownPinBtn">Vaihda oma PIN</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          ${isAdmin ? `
+            <div class="row" style="margin-top: 12px;">
+              <div class="col">
+                <div class="card pad">
+                  <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <div style="font-weight:900">Käyttäjät</div>
+                    <button class="btn primary" id="userAddBtn">Luo / päivitä</button>
+                  </div>
+                  <div class="divider"></div>
+                  <div class="list" id="userList"></div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="card pad">
+                  <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <div style="font-weight:900">Hyllypaikkojen hallinta</div>
+                    <button class="btn primary" id="locAddBtn">Lisää</button>
+                  </div>
+                  <div class="divider"></div>
+                  <div class="list" id="locList"></div>
+                </div>
+              </div>
+            </div>
+          ` : ``}
+        `;
+
+        $("#logoutBtn", root).addEventListener("click", () => logout("Kirjautuminen päättyi."));
+        $("#autoLogout", root).addEventListener("input", (e) => {
+          state.security.autoLogoutMinutes = clamp(parseInt(e.target.value, 10) || 0, 0, 240);
+        });
+        $("#ownPinBtn", root).addEventListener("click", () => openOwnPinModal());
+
+        if (!isAdmin) return;
+
+        // Users
+        const users = state.data.users || [];
+        const userList = $("#userList", root);
+        userList.innerHTML = (users.map((u) => {
+          const isMaster = u?.is_master === true || String(u?.id) === "master";
+          const username = String(u?.username || "").trim() || (isMaster ? (state.session.masterName || "Master") : "—");
+          const role = isMaster ? "master" : String(u?.role || "staff");
+          const active = !!u?.is_active;
+          return `
+            <div class="item">
+              <div class="main">
+                <div class="title">${escapeHtml(username)} · <span class="pill mono">${escapeHtml(role)}</span></div>
+                <div class="meta">${isMaster ? "Hotellin oletus-PIN (master/admin)" : ""}</div>
+              </div>
+              <div class="actions">
+                <button class="btn ghost" data-user-reset="${escapeHtml(username)}" ${isMaster ? "disabled" : ""}>Nollaa PIN</button>
+                <button class="btn ${active ? "ghost" : "danger"}" data-user-toggle="${escapeHtml(username)}" ${isMaster ? "disabled" : ""}>${active ? "Aktiivinen" : "Pois käytöstä"}</button>
+              </div>
+            </div>
+          `;
+        }).join("")) || `<div class="muted">Ei käyttäjiä.</div>`;
+
+        $("#userAddBtn", root).addEventListener("click", () => openUpsertUserModal());
+
+        $$('[data-user-reset]', userList).forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const username = btn.getAttribute('data-user-reset');
+            if (!username) return;
+            openUpsertUserModal({ username, role: "staff", is_active: true });
+          });
+        });
+        $$('[data-user-toggle]', userList).forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const username = btn.getAttribute('data-user-toggle');
+            const user = users.find((u) => String(u?.username || "") === String(username));
+            if (!user) return;
+            const next = !user.is_active;
+            const pin = await requirePin({ title: "Vahvista", message: "Syötä admin/master PIN." });
+            if (!pin) return;
+            const out = await api.setHotelUserActiveWithPin(state.session.hotelCode, pin, username, next);
+            if (out?.ok !== true) {
+              const reason = String(out?.reason || "");
+              if (reason === "wrong_pin") toast("error", "Virhe", "Väärä PIN.");
+              else toast("error", "Virhe", out?.message || reason || "Päivitys epäonnistui.");
+              return;
+            }
+            await loadUsers();
+            toast("success", "Ilmoitus", "Päivitetty.");
+          });
+        });
+
+        // Locations
+        const locs = state.data.locations || [];
+        const locList = $("#locList", root);
+        locList.innerHTML = (locs.map((l) => {
+          const label = l.label || l.code || "—";
+          return `
+            <div class="item">
+              <div class="main">
+                <div class="title">${escapeHtml(label)}</div>
+                <div class="meta">${escapeHtml(String(l.code || ""))}</div>
+              </div>
+              <div class="actions">
+                <button class="btn danger" data-loc-del="${escapeHtml(String(l.id))}">Poista</button>
+              </div>
+            </div>
+          `;
+        }).join("")) || `<div class="muted">Ei hyllypaikkoja.</div>`;
+
+        $("#locAddBtn", root).addEventListener("click", () => openAddLocationModal());
+
+        $$('[data-loc-del]', locList).forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-loc-del');
+            modalConfirm("Poista hyllypaikka", "Poistetaanko hyllypaikka?", [
+              { text: "Peruuta", kind: "ghost" },
+              {
+                text: "Poista",
+                kind: "danger",
+                onPress: async () => {
+                  try {
+                    await api.deleteLocation(id);
+                    await loadLocations();
+                    toast("success", "Ilmoitus", "Poistettu.");
+                  } catch (e) {
+                    toast("error", "Virhe", e?.message || "Poisto epäonnistui");
+                  }
+                },
+              },
+            ]);
+          });
+        });
+      }
+
+      function render() {
+        if (!state.session.ok) {
+          renderLogin();
           return;
         }
+        renderTopbar();
 
-        if(modalCtx.table==="appointments"){
-          let payload = {
-            hotel_code,
-            start_ts: $("f_start_ts").value.trim(),
-            end_ts: $("f_end_ts").value.trim(),
-            plate: $("f_plate").value.trim() || null,
-            customer_name: $("f_customer_name").value.trim() || null,
-            phone: $("f_phone").value.trim() || null,
-            notes: $("f_notes").value || null,
-            status: $("f_status").value.trim() || "Vahvistettu",
-            bay: Number($("f_bay").value || 1)
-          };
-
-          payload = await fillFromPlateIfMatch(payload);
-
-          const q = (modalCtx.mode==="add")
-            ? supabase.from("appointments").insert(payload)
-            : supabase.from("appointments").update(payload).eq("id", modalCtx.row.id);
-
-          const { error } = await q;
-          if(error) throw error;
-
-          closeModal();
-          await loadCalendar();
-          return;
-        }
-
-        if(modalCtx.table==="calendar_blocks"){
-          const payload = {
-            hotel_code,
-            start_ts: $("f_start_ts").value.trim(),
-            end_ts: $("f_end_ts").value.trim(),
-            kind: $("f_kind").value.trim() || "tauko",
-            title: $("f_title").value.trim() || null,
-            notes: $("f_notes").value || null
-          };
-
-          const q = (modalCtx.mode==="add")
-            ? supabase.from("calendar_blocks").insert(payload)
-            : supabase.from("calendar_blocks").update(payload).eq("id", modalCtx.row.id);
-
-          const { error } = await q;
-          if(error) throw error;
-
-          closeModal();
-          await loadCalendar();
-          return;
-        }
-
-      } catch(e){
-        setStatus("Tallennus: " + (e?.message || String(e)), "err");
+        if (state.tab === "dashboard") return renderDashboard();
+        if (state.tab === "worklist") return renderWorklist();
+        if (state.tab === "customers") return renderCustomers();
+        if (state.tab === "rows") return renderRows();
+        if (state.tab === "calendar") return renderCalendar();
+        if (state.tab === "settings") return renderSettings();
+        return renderDashboard();
       }
-    };
 
-    $("formDelete").onclick = async () => {
-      if(modalCtx.mode!=="edit" || !modalCtx.table || !modalCtx.row) return;
-      if(!confirm("Poistetaanko pysyvästi?")) return;
-
-      const { error } = await supabase.from(modalCtx.table).delete().eq("id", modalCtx.row.id);
-      if(error){ setStatus("Poisto: "+error.message,"err"); return; }
-      closeModal();
-
-      if(modalCtx.table==="customers") await loadCustomers();
-      if(modalCtx.table==="appointments" || modalCtx.table==="calendar_blocks") await loadCalendar();
-    };
-
-    // ===== Boot =====
-    async function boot(){
-      setStatus("Tarkistetaan sessio…");
-      const { data: { session } } = await supabase.auth.getSession();
-      if(!session?.user){
-        showAuth();
-        setStatus("Kirjaudu sisään.");
-        return;
-      }
-      showApp(session.user);
-      setActiveView("customers");
-      await refreshCurrentView();
-    }
-
-    supabase.auth.onAuthStateChange((_event, session) => {
-      if(session?.user) boot();
-      else showAuth();
-    });
-
-    await boot();
-  </script>
-</body>
+      render();
+    </script>
+  </body>
 </html>
