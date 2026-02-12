@@ -1,9 +1,94 @@
 <!doctype html>
-<html>
+<html lang="fi">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Rengashotelli</title>
+
+<style>
+:root{
+  --bg:#eef2f7;
+  --card:#ffffff;
+  --border:#d6dce5;
+  --primary:#0E7AFE;
+  --accent:#FF9F1C;
+  --text:#1f2937;
+  --sub:#6b7280;
+  --radius:14px;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto;
+  background:var(--bg);
+  color:var(--text);
+}
+
+.container{
+  max-width:1100px;
+  margin:auto;
+  padding:20px;
+}
+
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:20px;
+}
+
+.brand{
+  font-size:28px;
+  font-weight:800;
+}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:16px;
+  margin-bottom:15px;
+}
+
+button{
+  background:var(--primary);
+  color:white;
+  border:none;
+  padding:10px 16px;
+  border-radius:10px;
+  cursor:pointer;
+}
+
+button.secondary{
+  background:#fff;
+  border:1px solid var(--border);
+  color:var(--text);
+}
+
+input,select{
+  padding:10px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  width:100%;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.tile{
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:12px;
+  margin-top:8px;
+}
+
+.small{color:var(--sub);font-size:13px}
+</style>
+
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
@@ -14,156 +99,170 @@ const supabase = createClient(
 
 const $ = id => document.getElementById(id);
 
-let hotel_code = "";
+let hotel_code="";
 
 async function boot(){
-  const { data:{session} } = await supabase.auth.getSession();
-  if(!session?.user){
-    document.body.innerHTML = `
-      <h2>Kirjaudu</h2>
-      <input id="email" placeholder="email"><br><br>
-      <input id="pass" type="password" placeholder="password"><br><br>
-      <button onclick="login()">Kirjaudu</button>
-    `;
-    return;
-  }
+  const {data:{session}} = await supabase.auth.getSession();
+  if(!session?.user) return renderLogin();
   renderApp();
 }
 
-window.login = async function(){
+function renderLogin(){
+  document.body.innerHTML=`
+  <div class="container">
+    <div class="card">
+      <h2>Kirjaudu</h2>
+      <input id="email" placeholder="Sähköposti"><br><br>
+      <input id="pass" type="password" placeholder="Salasana"><br><br>
+      <button onclick="login()">Kirjaudu</button>
+    </div>
+  </div>`;
+}
+
+window.login=async()=>{
   await supabase.auth.signInWithPassword({
-    email: $("email").value,
-    password: $("pass").value
+    email:$("email").value,
+    password:$("pass").value
   });
   boot();
 };
 
 function renderApp(){
-  document.body.innerHTML = `
-    <h2>Rengashotelli</h2>
-    Hotel: <input id="hotel"><button onclick="setHotel()">OK</button>
-    <hr>
-    <button onclick="intake()">Uusi sisäänotto</button>
-    <button onclick="loadTires()">Renkaat</button>
-    <button onclick="calendar()">Kalenteri</button>
+  document.body.innerHTML=`
+  <div class="container">
+    <div class="topbar">
+      <div class="brand">Rengashotelli</div>
+      <div>
+        <input id="hotel" placeholder="hotel_code" style="width:200px">
+        <button onclick="setHotel()">OK</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <button onclick="intake()">Uusi sisäänotto</button>
+      <button class="secondary" onclick="loadTires()">Renkaat</button>
+      <button class="secondary" onclick="calendar()">Kalenteri</button>
+    </div>
+
     <div id="content"></div>
-  `;
+  </div>`;
 }
 
-window.setHotel = function(){
-  hotel_code = $("hotel").value.trim();
+window.setHotel=()=>{
+  hotel_code=$("hotel").value.trim();
   alert("Hotel asetettu: "+hotel_code);
 };
 
-
-// =======================
+//
 // SISÄÄNOTTO
-// =======================
-
-window.intake = async function(){
-  if(!hotel_code) return alert("Aseta hotel_code");
-
-  const { data: used } = await supabase
+//
+window.intake=async()=>{
+  const {data:used}=await supabase
     .from("tires")
     .select("hyllypaikka")
-    .eq("hotel_code", hotel_code)
-    .eq("poistettu", false);
+    .eq("hotel_code",hotel_code)
+    .eq("poistettu",false);
 
-  const usedSet = new Set((used||[]).map(x=>x.hyllypaikka));
+  const usedSet=new Set((used||[]).map(x=>x.hyllypaikka));
 
-  const { data: loc } = await supabase
+  const {data:loc}=await supabase
     .from("locations")
     .select("code")
-    .eq("hotel_code", hotel_code);
+    .eq("hotel_code",hotel_code);
 
-  const free = (loc||[]).filter(l=>!usedSet.has(l.code));
+  const free=(loc||[]).filter(l=>!usedSet.has(l.code));
 
-  $("content").innerHTML = `
+  $("content").innerHTML=`
+  <div class="card">
     <h3>Uusi sisäänotto</h3>
-    Nimi <input id="nimi"><br><br>
-    Rek <input id="rek"><br><br>
-    Puhelin <input id="puh"><br><br>
-    S.posti <input id="sposti"><br><br>
-
-    Hyllypaikka
-    <select id="hylly">
-      ${free.map(f=>`<option>${f.code}</option>`).join("")}
-    </select><br><br>
-
-    Kausimaksu
-    <select id="maksu">
-      <option value="true">Maksettu</option>
-      <option value="false">Ei maksettu</option>
-    </select><br><br>
-
+    <div class="grid">
+      <div><div class="small">Nimi</div><input id="nimi"></div>
+      <div><div class="small">Rekisteri</div><input id="rek"></div>
+      <div><div class="small">Puhelin</div><input id="puh"></div>
+      <div><div class="small">Sähköposti</div><input id="sposti"></div>
+      <div>
+        <div class="small">Hyllypaikka</div>
+        <select id="hylly">
+          ${free.map(f=>`<option>${f.code}</option>`).join("")}
+        </select>
+      </div>
+      <div>
+        <div class="small">Kausimaksu</div>
+        <select id="maksu">
+          <option value="true">Maksettu</option>
+          <option value="false">Ei maksettu</option>
+        </select>
+      </div>
+    </div>
+    <br>
     <button onclick="saveIntake()">Tallenna</button>
-  `;
+  </div>`;
 };
 
-window.saveIntake = async function(){
-  const payload = {
+window.saveIntake=async()=>{
+  const payload={
     hotel_code,
-    nimi: $("nimi").value,
-    rekisteri: $("rek").value,
-    puhelin: $("puh").value,
-    sahkoposti: $("sposti").value,
-    hyllypaikka: $("hylly").value,
-    sisaan_pvm: new Date().toISOString().slice(0,10),
-    tila: "Varastossa",
-    poistettu: false,
-    kausimaksu_maksettu: $("maksu").value==="true"
+    nimi:$("nimi").value,
+    rekisteri:$("rek").value,
+    puhelin:$("puh").value,
+    sahkoposti:$("sposti").value,
+    hyllypaikka:$("hylly").value,
+    sisaan_pvm:new Date().toISOString().slice(0,10),
+    tila:"Varastossa",
+    poistettu:false,
+    kausimaksu_maksettu:$("maksu").value==="true"
   };
 
-  const { error } = await supabase.from("tires").insert(payload);
-  if(error) return alert(error.message);
+  const {error}=await supabase.from("tires").insert(payload);
+  if(error)return alert(error.message);
 
-  alert("Tallennettu");
   loadTires();
 };
 
-
-// =======================
+//
 // RENKAAT
-// =======================
-
-window.loadTires = async function(){
-  const { data } = await supabase
+//
+window.loadTires=async()=>{
+  const {data}=await supabase
     .from("tires")
     .select("*")
-    .eq("hotel_code", hotel_code)
-    .eq("poistettu", false)
+    .eq("hotel_code",hotel_code)
+    .eq("poistettu",false)
     .order("paivitetty",{ascending:false});
 
-  $("content").innerHTML = `
+  $("content").innerHTML=`
+  <div class="card">
     <h3>Renkaat</h3>
     ${data.map(r=>`
-      <div style="border:1px solid #ccc;padding:10px;margin:5px;">
-        <b>${r.rekisteri}</b> - ${r.nimi} - ${r.hyllypaikka}
+      <div class="tile">
+        <b>${r.rekisteri}</b><br>
+        ${r.nimi}<br>
+        Hylly: ${r.hyllypaikka}
       </div>
     `).join("")}
-  `;
+  </div>`;
 };
 
-
-// =======================
+//
 // KALENTERI
-// =======================
-
-window.calendar = async function(){
-  const { data } = await supabase
+//
+window.calendar=async()=>{
+  const {data}=await supabase
     .from("appointments")
     .select("*")
-    .eq("hotel_code", hotel_code)
+    .eq("hotel_code",hotel_code)
     .order("start_ts",{ascending:true});
 
-  $("content").innerHTML = `
+  $("content").innerHTML=`
+  <div class="card">
     <h3>Varaukset</h3>
     ${data.map(a=>`
-      <div style="border:1px solid #ccc;padding:10px;margin:5px;">
-        ${a.start_ts} - ${a.customer_name} - ${a.plate}
+      <div class="tile">
+        ${a.start_ts}<br>
+        ${a.customer_name||""} ${a.plate||""}
       </div>
     `).join("")}
-  `;
+  </div>`;
 };
 
 boot();
