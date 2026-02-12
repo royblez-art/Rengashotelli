@@ -892,6 +892,8 @@
 
           listLocationsAdmin: (hotelCode) => request(`/locations?hotel_code=eq.${encodeURIComponent(hotelCode)}&select=id,code,label,shelf,row_letter,spot&order=shelf&order=row_letter&order=spot`),
 
+          listFreeLocations: (hotelCode) => request(`/locations_free?hotel_code=eq.${encodeURIComponent(hotelCode)}&order=code.asc`),
+
           addLocation: (hotelCode, shelf, row_letter, spot) => request(`/locations`, { method: "POST", preferReturn: true, body: { hotel_code: hotelCode, shelf, row_letter, spot, code: `H${String(shelf).padStart(2, "0")}-${row_letter}-${String(spot).padStart(2, "0")}`, label: `Hylly ${String(shelf).padStart(2, "0")} / ${row_letter} / ${String(spot).padStart(2, "0")}` } }),
 
           deleteLocation: (id) => request(`/locations?id=eq.${id}`, { method: "DELETE" }),
@@ -1009,6 +1011,111 @@
             return { ok: false, reason: "missing_function" };
           },
 
+          createAppointmentWithPin: async (hotelCode, pin, payload) => {
+            const resolvedPin = resolvePin(pin);
+            const normalizeBay = (v) => {
+              const n = parseInt(v, 10);
+              return n === 2 ? 2 : 1;
+            };
+            const variants = [
+              {
+                endpoint: `/rpc/create_appointment_with_pin`,
+                body: {
+                  hotel_code: hotelCode,
+                  pin: resolvedPin,
+                  start_ts: payload?.start_ts,
+                  end_ts: payload?.end_ts,
+                  bay: normalizeBay(payload?.bay),
+                  customer_name: payload?.customer_name ?? null,
+                  phone: payload?.phone ?? null,
+                  plate: payload?.plate ?? null,
+                  notes: payload?.notes ?? null,
+                },
+              },
+              {
+                endpoint: `/rpc/create_appointment_with_pin`,
+                body: {
+                  p_hotel_code: hotelCode,
+                  p_pin: resolvedPin,
+                  p_start_ts: payload?.start_ts,
+                  p_end_ts: payload?.end_ts,
+                  p_bay: normalizeBay(payload?.bay),
+                  p_customer_name: payload?.customer_name ?? null,
+                  p_phone: payload?.phone ?? null,
+                  p_plate: payload?.plate ?? null,
+                  p_notes: payload?.notes ?? null,
+                },
+              },
+              {
+                endpoint: `/rpc/create_appointment_with_pin_v2`,
+                body: {
+                  hotel_code: hotelCode,
+                  pin: resolvedPin,
+                  start_ts: payload?.start_ts,
+                  end_ts: payload?.end_ts,
+                  bay: normalizeBay(payload?.bay),
+                  customer_name: payload?.customer_name ?? null,
+                  phone: payload?.phone ?? null,
+                  plate: payload?.plate ?? null,
+                  notes: payload?.notes ?? null,
+                },
+              },
+              {
+                endpoint: `/rpc/create_appointment_with_pin_v2`,
+                body: {
+                  p_hotel_code: hotelCode,
+                  p_pin: resolvedPin,
+                  p_start_ts: payload?.start_ts,
+                  p_end_ts: payload?.end_ts,
+                  p_bay: normalizeBay(payload?.bay),
+                  p_customer_name: payload?.customer_name ?? null,
+                  p_phone: payload?.phone ?? null,
+                  p_plate: payload?.plate ?? null,
+                  p_notes: payload?.notes ?? null,
+                },
+              },
+            ];
+            let lastErr = null;
+            for (const v of variants) {
+              try {
+                return normalizeRpcObject(await request(v.endpoint, { method: "POST", body: v.body }));
+              } catch (e) {
+                const msg = String(e?.message || "");
+                const missing =
+                  msg.includes("Could not find the function public.create_appointment_with_pin") ||
+                  msg.includes("Could not find the function public.create_appointment_with_pin_v2") ||
+                  msg.includes("create_appointment_with_pin");
+                if (!missing) throw e;
+                lastErr = e;
+              }
+            }
+            return { ok: false, reason: "missing_function", message: String(lastErr?.message || "create_appointment_with_pin puuttuu backendistä.") };
+          },
+
+          deleteAppointmentWithPin: async (hotelCode, pin, appointmentId) => {
+            const resolvedPin = resolvePin(pin);
+            const key = String(appointmentId ?? "");
+            const variants = [
+              { p_hotel_code: hotelCode, p_pin: resolvedPin, p_appointment_id: key },
+              { hotel_code: hotelCode, pin: resolvedPin, appointment_id: key },
+            ];
+            let lastErr = null;
+            for (const body of variants) {
+              try {
+                const out = normalizeRpcObject(await request(`/rpc/cancel_appointment_with_pin`, { method: "POST", body }));
+                if (out?.reason === "wrong_pin") return { ok: false, reason: "wrong_pin" };
+                if (out?.ok === false) return out;
+                return { ok: true };
+              } catch (e) {
+                const msg = String(e?.message || "");
+                const missing = msg.includes("Could not find the function public.cancel_appointment_with_pin") || msg.includes("cancel_appointment_with_pin");
+                if (!missing) throw e;
+                lastErr = e;
+              }
+            }
+            return { ok: false, reason: "missing_function", message: String(lastErr?.message || "cancel_appointment_with_pin puuttuu backendistä.") };
+          },
+
           changeOwnPin: async (hotelCode, username, oldPin, newPin) => normalizeRpcObject(await request(`/rpc/change_hotel_user_pin_with_old_pin`, { method: "POST", body: { p_hotel_code: hotelCode, p_username: username, p_old_pin: oldPin, p_new_pin: newPin } })),
         };
       }
@@ -1035,6 +1142,7 @@
           tires: [],
           customers: [],
           blocks: [],
+          appointments: [],
           users: [],
           locations: [],
           calendarDate: todayStrLocal(),
@@ -1089,6 +1197,7 @@
         state.data.tires = [];
         state.data.customers = [];
         state.data.blocks = [];
+        state.data.appointments = [];
         state.data.users = [];
         state.data.locations = [];
         state.data.calendarDate = todayStrLocal();
@@ -1150,6 +1259,7 @@
           const weekStart = getMondayIso(state.data.calendarDate);
           const payload = await api.getCalendarWeek(state.session.hotelCode, weekStart);
           state.data.blocks = Array.isArray(payload?.blocks) ? payload.blocks : [];
+          state.data.appointments = Array.isArray(payload?.appointments) ? payload.appointments : [];
           render();
         } catch (e) {
           toast("error", "Virhe", e?.message || "Kalenterin lataus epäonnistui");
@@ -1220,7 +1330,7 @@
         }
       }
 
-      async function requirePin({ title, message, forcePrompt = false, prefill = "" } = {}) {
+      async function requirePin({ title, message, forcePrompt = false, prefill = "", requireAdmin = false } = {}) {
         const saved = String(state.session.pin || "").trim();
         if (!forcePrompt && saved) return saved;
         const typed = await modalPromptPin({ title: title || "PIN", message: message || "Syötä PIN.", prefill });
@@ -1228,6 +1338,10 @@
         const verify = await api.verifyHotelWithPin(state.session.hotelCode, typed);
         if (!verify?.ok) {
           toast("error", "Virhe", "Väärä PIN.");
+          return "";
+        }
+        if (requireAdmin && !isAdminRole(verify?.role)) {
+          toast("error", "Virhe", "Vain admin/master PIN käy tähän toimintoon.");
           return "";
         }
         state.session.pin = typed;
@@ -1266,7 +1380,7 @@
 
       async function softDeleteRow(row) {
         if (!isAdminRole(state.session.role)) return toast("error", "Virhe", "Ei oikeuksia.");
-        const pin = await requirePin({ title: "Vahvista poisto", message: "Syötä admin/master PIN poistoa varten." });
+        const pin = await requirePin({ title: "Vahvista poisto", message: "Syötä admin/master PIN poistoa varten.", requireAdmin: true });
         if (!pin) return;
         try {
           await api.deleteTireWithPin(row.id, state.session.hotelCode, pin);
@@ -1279,7 +1393,7 @@
 
       async function hardDeleteRow(row) {
         if (!isAdminRole(state.session.role)) return toast("error", "Virhe", "Ei oikeuksia.");
-        const pin = await requirePin({ title: "Vahvista pysyvä poisto", message: "Syötä admin/master PIN pysyvää poistoa varten.", forcePrompt: true });
+        const pin = await requirePin({ title: "Vahvista pysyvä poisto", message: "Syötä admin/master PIN pysyvää poistoa varten.", forcePrompt: true, requireAdmin: true });
         if (!pin) return;
         try {
           await api.hardDeleteTireWithPin(row.id, state.session.hotelCode, pin);
@@ -1292,7 +1406,7 @@
 
       async function softDeleteCustomer(customer) {
         if (!isAdminRole(state.session.role)) return toast("error", "Virhe", "Ei oikeuksia.");
-        const pin = await requirePin({ title: "Poista asiakas", message: "Syötä admin/master PIN." });
+        const pin = await requirePin({ title: "Poista asiakas", message: "Syötä admin/master PIN.", requireAdmin: true });
         if (!pin) return;
         try {
           const out = await api.customerSoftDeleteCascadeWithPin(state.session.hotelCode, pin, customer.id);
@@ -1306,7 +1420,7 @@
 
       async function hardDeleteCustomer(customer) {
         if (!isAdminRole(state.session.role)) return toast("error", "Virhe", "Ei oikeuksia.");
-        const pin = await requirePin({ title: "Poista asiakas pysyvästi", message: "Syötä admin/master PIN.", forcePrompt: true });
+        const pin = await requirePin({ title: "Poista asiakas pysyvästi", message: "Syötä admin/master PIN.", forcePrompt: true, requireAdmin: true });
         if (!pin) return;
         try {
           const out = await api.customerHardDeleteCascadeWithPin(state.session.hotelCode, pin, customer.id);
@@ -1400,7 +1514,7 @@
 
       async function calendarCloseDay() {
         if (!isAdminRole(state.session.role)) return toast("error", "Virhe", "Ei oikeuksia.");
-        const pin = await requirePin({ title: "Päivän sulku", message: "Syötä admin/master PIN." });
+        const pin = await requirePin({ title: "Päivän sulku", message: "Syötä admin/master PIN.", requireAdmin: true });
         if (!pin) return;
         const dateIso = state.data.calendarDate;
         const start = new Date(`${dateIso}T00:00:00`);
@@ -1423,7 +1537,7 @@
 
       async function calendarOpenDay() {
         if (!isAdminRole(state.session.role)) return toast("error", "Virhe", "Ei oikeuksia.");
-        const pin = await requirePin({ title: "Päivän avaus", message: "Syötä admin/master PIN." });
+        const pin = await requirePin({ title: "Päivän avaus", message: "Syötä admin/master PIN.", requireAdmin: true });
         if (!pin) return;
         const dayBlocks = blocksForSelectedDay();
         if (dayBlocks.length === 0) return toast("info", "Ilmoitus", "Ei sulkuja valitulle päivälle.");
@@ -1820,6 +1934,7 @@
           <div class="field">
             <div class="label">Asiakkaan nimi <span class="req">*</span></div>
             <input id="nrName" />
+            <div id="nrCustHint" style="margin-top:6px;"></div>
           </div>
           <div class="field">
             <div class="label">Puhelinnumero <span class="req">*</span></div>
@@ -1839,6 +1954,16 @@
             <input id="nrLoc" placeholder="esim. H01-A-01" />
           </div>
           <div class="field">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
+              <div class="label">Vapaat hyllypaikat</div>
+              <button class="btn ghost" id="nrFreeRefresh" type="button">Päivitä</button>
+            </div>
+            <select id="nrFreeSelect">
+              <option value="">Haetaan...</option>
+            </select>
+            <div class="p" id="nrFreeMeta" style="margin:0"></div>
+          </div>
+          <div class="field">
             <div class="label">Huomiot</div>
             <textarea id="nrNotes"></textarea>
           </div>
@@ -1856,9 +1981,108 @@
         `;
 
         openModal("Uusi rivi", html);
+
+        const nameEl = $("#nrName", modalBody);
+        const phoneEl = $("#nrPhone", modalBody);
+        const emailEl = $("#nrEmail", modalBody);
+        const locEl = $("#nrLoc", modalBody);
+        const custHint = $("#nrCustHint", modalBody);
+        const freeSelect = $("#nrFreeSelect", modalBody);
+        const freeMeta = $("#nrFreeMeta", modalBody);
+        const freeRefreshBtn = $("#nrFreeRefresh", modalBody);
+
         const plate = $("#nrPlate", modalBody);
         const dup = $("#nrDup", modalBody);
         let dupTimer = null;
+        let custTimer = null;
+        let lastCustomerKey = "";
+
+        async function refreshFreeLocations() {
+          freeRefreshBtn.disabled = true;
+          freeSelect.innerHTML = `<option value=\"\">Haetaan...</option>`;
+          freeMeta.textContent = "";
+          try {
+            const rows = await api.listFreeLocations(state.session.hotelCode);
+            const items = Array.isArray(rows) ? rows : [];
+            const opts = [`<option value=\"\">Valitse vapaa paikka</option>`].concat(
+              items.map((r) => {
+                const code = String(r?.code || r?.hyllypaikka || r?.location || "").trim();
+                const label = String(r?.label || r?.nimi || r?.name || code).trim() || code || "—";
+                if (!code) return "";
+                return `<option value=\"${escapeHtml(code)}\">${escapeHtml(label)}</option>`;
+              }).filter(Boolean)
+            );
+            freeSelect.innerHTML = opts.join("");
+            freeMeta.textContent = items.length ? `${items.length} vapaata` : "Ei vapaita paikkoja";
+
+            const firstCode = items
+              .map((r) => String(r?.code || r?.hyllypaikka || r?.location || "").trim())
+              .find((v) => !!v);
+            if (!String(locEl.value || "").trim() && firstCode) {
+              // täytä ensimmäinen ehdotus automaattisesti, jos kenttä tyhjä
+              locEl.value = firstCode;
+            }
+          } catch (e) {
+            freeSelect.innerHTML = `<option value=\"\">(Haku epäonnistui)</option>`;
+            freeMeta.textContent = e?.message ? String(e.message) : "Haku epäonnistui";
+          } finally {
+            freeRefreshBtn.disabled = false;
+          }
+        }
+
+        freeRefreshBtn.addEventListener("click", () => refreshFreeLocations());
+        freeSelect.addEventListener("change", () => {
+          const v = String(freeSelect.value || "").trim();
+          if (v) locEl.value = v;
+        });
+        refreshFreeLocations();
+
+        function renderCustomerHint(customerRow) {
+          if (!customerRow) {
+            custHint.innerHTML = "";
+            return;
+          }
+          const p = String(customerRow?.puhelin || customerRow?.phone || "").trim();
+          const e = String(customerRow?.sahkoposti || customerRow?.email || "").trim();
+          const hasData = !!(p || e);
+          const fillable = (p && !String(phoneEl.value || "").trim()) || (e && !String(emailEl.value || "").trim());
+          custHint.innerHTML = `
+            <div class=\"p\" style=\"margin:0\">Asiakas löytyy rekisteristä${hasData ? `: ${escapeHtml(p)} ${e ? \"· \" + escapeHtml(e) : \"\"}` : \".\"}</div>
+            <div class=\"btn-row\" style=\"margin-top:8px; justify-content:flex-end;\">\n              <button class=\"btn ghost\" id=\"nrCustNo\" type=\"button\">Ei nyt</button>\n              <button class=\"btn primary\" id=\"nrCustFill\" type=\"button\" ${fillable ? \"\" : \"disabled\"}>Täytä</button>\n            </div>
+          `;
+          $("#nrCustNo", modalBody).addEventListener("click", () => {
+            custHint.innerHTML = "";
+          });
+          $("#nrCustFill", modalBody).addEventListener("click", () => {
+            if (p && !String(phoneEl.value || "").trim()) phoneEl.value = p;
+            if (e && !String(emailEl.value || "").trim()) emailEl.value = e;
+            custHint.innerHTML = "";
+          });
+        }
+
+        nameEl.addEventListener("input", () => {
+          const key = String(nameEl.value || "").trim();
+          if (!key) {
+            lastCustomerKey = "";
+            custHint.innerHTML = "";
+            clearTimeout(custTimer);
+            return;
+          }
+          if (key === lastCustomerKey) return;
+          clearTimeout(custTimer);
+          custTimer = setTimeout(async () => {
+            const curr = String(nameEl.value || "").trim();
+            if (!curr || curr === lastCustomerKey) return;
+            lastCustomerKey = curr;
+            try {
+              const found = await api.getCustomerByName(state.session.hotelCode, curr);
+              if (found) renderCustomerHint(found);
+              else custHint.innerHTML = "";
+            } catch {
+              // ignore
+            }
+          }, 300);
+        });
 
         plate.addEventListener("input", () => {
           const v = String(plate.value || "").trim();
@@ -1887,11 +2111,11 @@
         $("#nrCancel", modalBody).addEventListener("click", closeModal);
         $("#nrSave", modalBody).addEventListener("click", async () => {
           const form = {
-            customer: $("#nrName", modalBody).value,
-            phone: $("#nrPhone", modalBody).value,
-            email: $("#nrEmail", modalBody).value,
+            customer: nameEl.value,
+            phone: phoneEl.value,
+            email: emailEl.value,
             plate: $("#nrPlate", modalBody).value,
-            location: $("#nrLoc", modalBody).value,
+            location: locEl.value,
             notes: $("#nrNotes", modalBody).value,
             season_fee_paid: $("#nrSeason", modalBody).value === "true",
           };
@@ -1899,7 +2123,7 @@
           await addNewRow(form);
         });
 
-        setTimeout(() => $("#nrName", modalBody).focus(), 0);
+        setTimeout(() => nameEl.focus(), 0);
       }
 
       function openRowDetailsModal(row) {
@@ -2081,44 +2305,179 @@
         renderList();
       }
       function renderCalendar() {
-        const dateIso = state.data.calendarDate;
-        const blocks = blocksForSelectedDay();
-        const closed = blocks.length > 0;
+        const pad2 = (n) => String(n).padStart(2, "0");
+        const isoDateFromLocalTs = (ts) => {
+          const d = new Date(ts);
+          const y = d.getFullYear();
+          const m = pad2(d.getMonth() + 1);
+          const day = pad2(d.getDate());
+          return `${y}-${m}-${day}`;
+        };
+        const clockFromTs = (ts) => {
+          const d = new Date(ts);
+          return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+        };
+        const fiWeekdayShort = (iso) => {
+          const d = new Date(`${iso}T00:00:00`);
+          const map = ["Su", "Ma", "Ti", "Ke", "To", "Pe", "La"];
+          return map[d.getDay()] || "";
+        };
+        const weekStart = getMondayIso(state.data.calendarDate);
+        const weekEnd = addDaysIso(weekStart, 6);
+        const weekDays = Array.from({ length: 7 }, (_, i) => addDaysIso(weekStart, i));
+
+        const blocks = Array.isArray(state.data.blocks) ? state.data.blocks : [];
+        const apptsRaw = Array.isArray(state.data.appointments) ? state.data.appointments : [];
+        const appts = apptsRaw
+          .map((a) => {
+            const startMs = new Date(a.start_ts).getTime();
+            const endMs = new Date(a.end_ts).getTime();
+            const dayIso = isoDateFromLocalTs(a.start_ts);
+            const bay = parseInt(a?.bay ?? a?.nosturi ?? a?.lane, 10);
+            return { ...a, startMs, endMs, dayIso, bay: bay === 2 ? 2 : 1 };
+          })
+          .filter((a) => Number.isFinite(a.startMs) && Number.isFinite(a.endMs) && a.endMs > a.startMs);
+
+        const apptsByDay = new Map();
+        for (const day of weekDays) apptsByDay.set(day, []);
+        for (const a of appts) {
+          if (!apptsByDay.has(a.dayIso)) continue;
+          apptsByDay.get(a.dayIso).push(a);
+        }
+        for (const day of weekDays) {
+          apptsByDay.get(day).sort((x, y) => x.startMs - y.startMs);
+        }
+
+        const dayBlocks = (dayIso) => {
+          const startDay = new Date(`${dayIso}T00:00:00Z`).getTime();
+          const endDay = new Date(`${addDaysIso(dayIso, 1)}T00:00:00Z`).getTime();
+          return blocks.filter((b) => {
+            const s = new Date(b.start_ts).getTime();
+            const e = new Date(b.end_ts).getTime();
+            return Number.isFinite(s) && Number.isFinite(e) && e > startDay && s < endDay;
+          });
+        };
+
+        const selectedDay = String(state.data.calendarDate || todayStrLocal());
+        const selectedBlocks = dayBlocks(selectedDay);
+        const selectedClosed = selectedBlocks.length > 0;
+        const selectedAppts = apptsByDay.get(selectedDay) || [];
 
         root.innerHTML = `
           <div class="card pad">
             <div style="display:flex; align-items:flex-start; justify-content:space-between; gap: 10px;">
               <div>
                 <h1 class="h1">Kalenteri</h1>
-                <p class="p">Päivän sulku/avaus (admin/master PIN).</p>
+                <p class="p">Viikko: <span style="font-weight:900">${escapeHtml(weekStart)}</span> – <span style="font-weight:900">${escapeHtml(weekEnd)}</span></p>
               </div>
-              <span class="pill">${closed ? "Suljettu" : "Auki"}</span>
+              <div style="display:flex; gap: 8px; flex-wrap: wrap; justify-content:flex-end;">
+                <span class="pill">${selectedClosed ? "Suljettu" : "Auki"}</span>
+                <span class="pill">Varaukset (päivä): ${selectedAppts.length}</span>
+              </div>
             </div>
+
             <div class="row" style="margin-top: 10px;">
-              <div class="col" style="min-width: 240px;">
+              <div class="col" style="min-width: 260px;">
                 <div class="field" style="margin:0">
-                  <div class="label">Päivä</div>
-                  <input id="calDate" type="date" value="${escapeHtml(dateIso)}" />
+                  <div class="label">Viikon valinta</div>
+                  <input id="calPick" type="date" value="${escapeHtml(selectedDay)}" />
                 </div>
               </div>
-              <div class="col" style="min-width: 240px;">
+              <div class="col" style="min-width: 260px;">
                 <div class="btn-row" style="margin-top: 20px; justify-content:flex-end;">
+                  <button class="btn ghost" id="calPrevWeek">← Viikko</button>
+                  <button class="btn ghost" id="calToday">Tänään</button>
+                  <button class="btn ghost" id="calNextWeek">Viikko →</button>
                   <button class="btn ghost" id="calRefresh">Päivitä</button>
-                  <button class="btn primary" id="calClose" ${isAdminRole(state.session.role) ? "" : "disabled"}>Sulje päivä</button>
-                  <button class="btn danger" id="calOpen" ${isAdminRole(state.session.role) ? "" : "disabled"}>Avaa päivä</button>
                 </div>
               </div>
             </div>
           </div>
 
           <div class="card pad" style="margin-top: 12px;">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap: 8px;">
-              <div style="font-weight:900">Sulut (valittu päivä)</div>
-              <span class="pill">${blocks.length}</span>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
+              <div style="font-weight:900">Viikkonäkymä</div>
+              <span class="pill">${appts.length} varausta</span>
             </div>
             <div class="divider"></div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;">
+              ${weekDays.map((dayIso) => {
+                const dayAppts = apptsByDay.get(dayIso) || [];
+                const closed = dayBlocks(dayIso).length > 0;
+                const isSelected = dayIso === selectedDay;
+                return `
+                  <div class="card pad" style="box-shadow:none; border-color:${isSelected ? "rgba(14, 122, 254, 0.55)" : "#e2e8f0"}; background:${isSelected ? "rgba(14, 122, 254, 0.04)" : "white"}; cursor:pointer;" data-cal-day="${escapeHtml(dayIso)}">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap: 8px;">
+                      <div style="font-weight:900">${escapeHtml(fiWeekdayShort(dayIso))} ${escapeHtml(dayIso)}</div>
+                      <span class="pill">${dayAppts.length}</span>
+                    </div>
+                    <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                      ${closed ? `<span class="pill">Suljettu</span>` : ``}
+                    </div>
+                    <div style="margin-top:10px;" class="muted">
+                      ${dayAppts.slice(0, 3).map((a) => {
+                        const label = `${clockFromTs(a.start_ts)}-${clockFromTs(a.end_ts)} · ${String(a.customer_name || "").trim() || "—"}`;
+                        return `<div style="font-size:13px; line-height:1.35; margin-top:4px;">${escapeHtml(label)}</div>`;
+                      }).join("")}
+                      ${dayAppts.length > 3 ? `<div style="font-size:13px; margin-top:6px;">+${dayAppts.length - 3} lisää</div>` : ``}
+                      ${dayAppts.length === 0 ? `<div style="font-size:13px;">Ei varauksia</div>` : ``}
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </div>
+
+          <div class="card pad" style="margin-top: 12px;">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap: 10px;">
+              <div>
+                <div style="font-weight:900; font-size:16px;">${escapeHtml(selectedDay)} · ${escapeHtml(fiWeekdayShort(selectedDay))}</div>
+                <div class="p" style="margin-top:4px">Varaukset ja päivän sulku/avaus.</div>
+              </div>
+              <div class="btn-row" style="margin-top: 0; justify-content:flex-end;">
+                <button class="btn primary" id="calNewAppt" ${isAdminRole(state.session.role) ? "" : "disabled"}>Uusi varaus</button>
+                <button class="btn primary" id="calClose" ${isAdminRole(state.session.role) ? "" : "disabled"}>Sulje päivä</button>
+                <button class="btn danger" id="calOpen" ${isAdminRole(state.session.role) ? "" : "disabled"}>Avaa päivä</button>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div style="display:flex; align-items:center; justify-content:space-between; gap: 8px;">
+              <div style="font-weight:900">Varaukset</div>
+              <span class="pill">${selectedAppts.length}</span>
+            </div>
+            <div class="list" style="margin-top:10px;">
+              ${selectedAppts.map((a) => {
+                const who = String(a.customer_name || "").trim() || "—";
+                const plate = String(a.plate || "").trim();
+                const phone = String(a.phone || "").trim();
+                const notes = String(a.notes || "").trim();
+                const time = `${clockFromTs(a.start_ts)}-${clockFromTs(a.end_ts)}`;
+                const bay = a.bay === 2 ? "Nosturi 2" : "Nosturi 1";
+                return `
+                  <div class="item">
+                    <div class="main">
+                      <div class="title">${escapeHtml(time)} · ${escapeHtml(bay)} · ${escapeHtml(who)}</div>
+                      <div class="meta">${plate ? "Rek: " + escapeHtml(plate) : ""}${plate && phone ? " · " : ""}${phone ? "Puh: " + escapeHtml(phone) : ""}${notes ? "<br/>" + escapeHtml(notes) : ""}</div>
+                    </div>
+                    <div class="actions">
+                      ${isAdminRole(state.session.role) ? `<button class="btn danger" data-appt-del="${escapeHtml(String(a.id || ""))}">Poista</button>` : ``}
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+              ${selectedAppts.length === 0 ? `<div class="muted">Ei varauksia tälle päivälle.</div>` : ``}
+            </div>
+
+            <div class="divider"></div>
+
+            <div style="display:flex; align-items:center; justify-content:space-between; gap: 8px;">
+              <div style="font-weight:900">Sulut (valittu päivä)</div>
+              <span class="pill">${selectedBlocks.length}</span>
+            </div>
             <div class="list">
-              ${blocks.map((b) => {
+              ${selectedBlocks.map((b) => {
                 const s = new Date(b.start_ts);
                 const e = new Date(b.end_ts);
                 const label = `${s.toLocaleString()} → ${e.toLocaleString()}`;
@@ -2134,23 +2493,200 @@
                   </div>
                 `;
               }).join("")}
-              ${blocks.length === 0 ? `<div class="muted">Ei sulkuja.</div>` : ``}
+              ${selectedBlocks.length === 0 ? `<div class="muted">Ei sulkuja.</div>` : ``}
             </div>
           </div>
         `;
 
-        $("#calDate", root).addEventListener("change", (e) => {
+        $("#calPick", root).addEventListener("change", (e) => {
           state.data.calendarDate = String(e.target.value || todayStrLocal());
           loadCalendarWeek();
         });
+        $("#calPrevWeek", root).addEventListener("click", () => {
+          state.data.calendarDate = addDaysIso(weekStart, -7);
+          loadCalendarWeek();
+        });
+        $("#calNextWeek", root).addEventListener("click", () => {
+          state.data.calendarDate = addDaysIso(weekStart, 7);
+          loadCalendarWeek();
+        });
+        $("#calToday", root).addEventListener("click", () => {
+          state.data.calendarDate = todayStrLocal();
+          loadCalendarWeek();
+        });
         $("#calRefresh", root).addEventListener("click", () => loadCalendarWeek());
+
+        $$("[data-cal-day]", root).forEach((el) => {
+          el.addEventListener("click", () => {
+            const dayIso = el.getAttribute("data-cal-day");
+            if (!dayIso) return;
+            state.data.calendarDate = dayIso;
+            render(); // same week already loaded
+          });
+        });
+
         $("#calClose", root).addEventListener("click", () => calendarCloseDay());
         $("#calOpen", root).addEventListener("click", () => calendarOpenDay());
+
+        $("#calNewAppt", root).addEventListener("click", () => {
+          if (!isAdminRole(state.session.role)) return;
+          const defaultStart = `${selectedDay}T08:00`;
+          const defaultEnd = `${selectedDay}T09:00`;
+          const customerNames = (state.data.customers || []).map((c) => String(c?.nimi || c?.customer || "").trim()).filter(Boolean);
+          const uniquePlates = Array.from(new Set((state.data.tires || []).map((r) => normalizePlate(r?.plate)).filter(Boolean))).slice(0, 200);
+
+          const html = `
+            <div class="msg">Uusi varaus (admin/master PIN).</div>
+            <div class="row">
+              <div class="col" style="min-width:240px">
+                <div class="field" style="margin-top:10px">
+                  <div class="label">Alkaa</div>
+                  <input id="apStart" type="datetime-local" value="${escapeHtml(defaultStart)}" />
+                </div>
+              </div>
+              <div class="col" style="min-width:240px">
+                <div class="field" style="margin-top:10px">
+                  <div class="label">Päättyy</div>
+                  <input id="apEnd" type="datetime-local" value="${escapeHtml(defaultEnd)}" />
+                </div>
+              </div>
+              <div class="col" style="min-width:180px">
+                <div class="field" style="margin-top:10px">
+                  <div class="label">Nosturi</div>
+                  <select id="apBay">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <datalist id="apCustomerList">
+              ${customerNames.slice(0, 250).map((n) => `<option value="${escapeHtml(n)}"></option>`).join("")}
+            </datalist>
+            <datalist id="apPlateList">
+              ${uniquePlates.map((p) => `<option value="${escapeHtml(p)}"></option>`).join("")}
+            </datalist>
+
+            <div class="field">
+              <div class="label">Asiakas</div>
+              <input id="apCustomer" list="apCustomerList" placeholder="Asiakkaan nimi" />
+            </div>
+            <div class="field">
+              <div class="label">Puhelin</div>
+              <input id="apPhone" placeholder="Puhelinnumero" />
+            </div>
+            <div class="field">
+              <div class="label">Rekisteri</div>
+              <input id="apPlate" list="apPlateList" placeholder="ABC-123" />
+              <div class="p" id="apPlateHint" style="margin:0"></div>
+            </div>
+            <div class="field">
+              <div class="label">Huomiot</div>
+              <textarea id="apNotes"></textarea>
+            </div>
+            <div class="btn-row" style="justify-content:flex-end;">
+              <button class="btn ghost" id="apCancel" type="button">Peruuta</button>
+              <button class="btn primary" id="apSave" type="button">Tallenna</button>
+            </div>
+          `;
+          openModal("Uusi varaus", html);
+
+          const cEl = $("#apCustomer", modalBody);
+          const pEl = $("#apPhone", modalBody);
+          const plateEl = $("#apPlate", modalBody);
+          const hint = $("#apPlateHint", modalBody);
+
+          cEl.addEventListener("change", () => {
+            const key = String(cEl.value || "").trim();
+            if (!key) return;
+            const match = (state.data.customers || []).find((c) => String(c?.nimi || c?.customer || "").trim() === key);
+            if (match && !String(pEl.value || "").trim()) {
+              const v = String(match?.puhelin || match?.phone || "").trim();
+              if (v) pEl.value = v;
+            }
+          });
+          plateEl.addEventListener("input", () => {
+            const norm = normalizePlate(plateEl.value);
+            if (!norm) { hint.textContent = ""; return; }
+            const row = (state.data.tires || []).find((r) => normalizePlate(r?.plate) === norm);
+            if (row) {
+              hint.textContent = `Hyllypaikka: ${String(row.location || row.last_location || "—")}`;
+              if (!String(cEl.value || "").trim() && String(row.customer || "").trim()) {
+                cEl.value = String(row.customer || "").trim();
+              }
+              if (!String(pEl.value || "").trim() && String(row.phone || "").trim()) {
+                pEl.value = String(row.phone || "").trim();
+              }
+            } else {
+              hint.textContent = "";
+            }
+          });
+
+          $("#apCancel", modalBody).addEventListener("click", closeModal);
+          $("#apSave", modalBody).addEventListener("click", async () => {
+            const startVal = String($("#apStart", modalBody).value || "").trim();
+            const endVal = String($("#apEnd", modalBody).value || "").trim();
+            const bay = parseInt($("#apBay", modalBody).value, 10) || 1;
+            const customer_name = String($("#apCustomer", modalBody).value || "").trim() || null;
+            const phone = String($("#apPhone", modalBody).value || "").trim() || null;
+            const plate = String($("#apPlate", modalBody).value || "").trim() || null;
+            const notes = String($("#apNotes", modalBody).value || "").trim() || null;
+            if (!startVal || !endVal) return toast("error", "Virhe", "Täytä alku ja loppu.");
+            const startIso = new Date(startVal).toISOString();
+            const endIso = new Date(endVal).toISOString();
+            if (new Date(endIso).getTime() <= new Date(startIso).getTime()) return toast("error", "Virhe", "Aika ei kelpaa.");
+
+            closeModal();
+            const pin = await requirePin({ title: "Vahvista", message: "Syötä admin/master PIN varaukseen.", requireAdmin: true });
+            if (!pin) return;
+            try {
+              const out = await api.createAppointmentWithPin(state.session.hotelCode, pin, { start_ts: startIso, end_ts: endIso, bay, customer_name, phone, plate, notes });
+              if (out?.ok !== true) {
+                const reason = String(out?.reason || "");
+                if (reason === "wrong_pin") toast("error", "Virhe", "Väärä PIN.");
+                else toast("error", "Virhe", out?.message || reason || "Varauksen luonti epäonnistui.");
+                return;
+              }
+              await loadCalendarWeek();
+              toast("success", "Ilmoitus", "Varaus tallennettu.");
+            } catch (e) {
+              toast("error", "Virhe", e?.message || "Varauksen luonti epäonnistui.");
+            }
+          });
+        });
+
+        $$("[data-appt-del]", root).forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-appt-del");
+            if (!id) return;
+            modalConfirm("Poista varaus?", "Poistetaanko varaus?", [
+              { text: "Peruuta", kind: "ghost" },
+              {
+                text: "Poista",
+                kind: "danger",
+                onPress: async () => {
+                  const pin = await requirePin({ title: "Vahvista poisto", message: "Syötä admin/master PIN.", requireAdmin: true });
+                  if (!pin) return;
+                  const out = await api.deleteAppointmentWithPin(state.session.hotelCode, pin, id);
+                  if (out?.ok !== true) {
+                    const reason = String(out?.reason || "");
+                    if (reason === "wrong_pin") toast("error", "Virhe", "Väärä PIN.");
+                    else toast("error", "Virhe", out?.message || reason || "Poisto epäonnistui.");
+                    return;
+                  }
+                  await loadCalendarWeek();
+                  toast("success", "Ilmoitus", "Varaus poistettu.");
+                },
+              },
+            ]);
+          });
+        });
 
         $$('[data-del-block]', root).forEach((btn) => {
           btn.addEventListener('click', async () => {
             const id = btn.getAttribute('data-del-block');
-            const pin = await requirePin({ title: "Poista sulku", message: "Syötä admin/master PIN." });
+            const pin = await requirePin({ title: "Poista sulku", message: "Syötä admin/master PIN.", requireAdmin: true });
             if (!pin) return;
             const out = await api.deleteBlockWithPin(state.session.hotelCode, pin, id);
             if (out?.ok === false && out?.reason === "wrong_pin") return toast("error", "Virhe", "Väärä PIN.");
@@ -2248,12 +2784,12 @@
           if (!username || !newPin) return toast("error", "Virhe", "Täytä käyttäjänimi ja uusi PIN.");
           closeModal();
 
-          const pinForAction = await requirePin({ title: "Vahvista", message: "Syötä admin/master PIN." });
+          const pinForAction = await requirePin({ title: "Vahvista", message: "Syötä admin/master PIN.", requireAdmin: true });
           if (!pinForAction) return;
 
           let out = await api.upsertHotelUserPinWithPin(state.session.hotelCode, pinForAction, username, newPin, role, isActive);
           if (out?.ok !== true && out?.reason === "missing_function") {
-            const masterPin = await requirePin({ title: "Master PIN", message: "Syötä master-PIN käyttäjän luontiin/päivitykseen.", forcePrompt: true, prefill: state.session.pinSource === "master" ? (state.session.pin || "") : "" });
+            const masterPin = await requirePin({ title: "Master PIN", message: "Syötä master-PIN käyttäjän luontiin/päivitykseen.", forcePrompt: true, prefill: state.session.pinSource === "master" ? (state.session.pin || "") : "", requireAdmin: true });
             if (!masterPin) return;
             out = await api.upsertHotelUserPinWithMasterPin(state.session.hotelCode, masterPin, username, newPin, role, isActive);
           }
@@ -2421,7 +2957,7 @@
             const user = users.find((u) => String(u?.username || "") === String(username));
             if (!user) return;
             const next = !user.is_active;
-            const pin = await requirePin({ title: "Vahvista", message: "Syötä admin/master PIN." });
+            const pin = await requirePin({ title: "Vahvista", message: "Syötä admin/master PIN.", requireAdmin: true });
             if (!pin) return;
             const out = await api.setHotelUserActiveWithPin(state.session.hotelCode, pin, username, next);
             if (out?.ok !== true) {
