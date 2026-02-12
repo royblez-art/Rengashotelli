@@ -1,272 +1,979 @@
 <!doctype html>
 <html lang="fi">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Rengashotelli</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rengashotelli – Web</title>
+  <style>
+    :root{
+      --bg:#edf2f7; --card:#fff; --text:#1f2937; --sub:#4b5563;
+      --border:#d7dde6; --primary:#0E7AFE; --accent:#FF9F1C;
+      --danger:#b00020; --ok:#1b5e20; --shadow:0 1px 0 rgba(0,0,0,.03);
+      --r:14px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:var(--bg); color:var(--text);}
+    .wrap{max-width:1200px; margin:0 auto; padding:16px;}
+    .topbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:10px;}
+    .brand{font-size:30px; font-weight:900;}
+    .muted{color:var(--sub)}
+    .card{background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:12px; box-shadow:var(--shadow); margin:10px 0;}
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+    input, button, select, textarea{
+      font-size:15px; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:#fff;
+    }
+    textarea{min-height:84px; width:100%; resize:vertical;}
+    input{min-width:220px}
+    button{cursor:pointer}
+    button.primary{background:var(--primary); color:#fff; border-color:transparent;}
+    button.danger{border-color:#f1b7bf; color:var(--danger); background:#fff;}
+    button.ghost{background:#fff;}
+    .pill{display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:#fff; font-size:12px;}
+    .status{padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:#fff;}
+    .status.ok{border-color:#cfe8d3; color:var(--ok);}
+    .status.err{border-color:#f1b7bf; color:var(--danger);}
+    .tabs{display:flex; gap:8px; flex-wrap:wrap;}
+    .tab{padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:#fff;}
+    .tab.active{border-color:rgba(14,122,254,.45);}
+    table{width:100%; border-collapse:collapse; overflow:hidden; border-radius:12px;}
+    th, td{border:1px solid var(--border); padding:10px; text-align:left; vertical-align:top;}
+    th{background:#f6f7fb; position:sticky; top:0;}
+    tr:hover{background:#fafbff;}
+    .small{font-size:13px}
+    .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+    .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
+    @media (max-width: 980px){ .grid2,.grid3{grid-template-columns:1fr;} }
 
-<style>
-:root{
-  --bg:#eef2f7;
-  --card:#ffffff;
-  --border:#d6dce5;
-  --primary:#0E7AFE;
-  --accent:#FF9F1C;
-  --text:#1f2937;
-  --sub:#6b7280;
-  --radius:14px;
-}
-
-*{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:system-ui,-apple-system,Segoe UI,Roboto;
-  background:var(--bg);
-  color:var(--text);
-}
-
-.container{
-  max-width:1100px;
-  margin:auto;
-  padding:20px;
-}
-
-.topbar{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:20px;
-}
-
-.brand{
-  font-size:28px;
-  font-weight:800;
-}
-
-.card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  padding:16px;
-  margin-bottom:15px;
-}
-
-button{
-  background:var(--primary);
-  color:white;
-  border:none;
-  padding:10px 16px;
-  border-radius:10px;
-  cursor:pointer;
-}
-
-button.secondary{
-  background:#fff;
-  border:1px solid var(--border);
-  color:var(--text);
-}
-
-input,select{
-  padding:10px;
-  border-radius:10px;
-  border:1px solid var(--border);
-  width:100%;
-}
-
-.grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
-}
-
-.tile{
-  border:1px solid var(--border);
-  border-radius:10px;
-  padding:12px;
-  margin-top:8px;
-}
-
-.small{color:var(--sub);font-size:13px}
-</style>
-
-<script type="module">
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-
-const supabase = createClient(
-  "https://xbxmysfxbkcrjsxjtzkz.supabase.co",
-  "sb_publishable_8e1s0Fj93ydy900tLpAwHQ_BAfVDGUq"
-);
-
-const $ = id => document.getElementById(id);
-
-let hotel_code="";
-
-async function boot(){
-  const {data:{session}} = await supabase.auth.getSession();
-  if(!session?.user) return renderLogin();
-  renderApp();
-}
-
-function renderLogin(){
-  document.body.innerHTML=`
-  <div class="container">
-    <div class="card">
-      <h2>Kirjaudu</h2>
-      <input id="email" placeholder="Sähköposti"><br><br>
-      <input id="pass" type="password" placeholder="Salasana"><br><br>
-      <button onclick="login()">Kirjaudu</button>
-    </div>
-  </div>`;
-}
-
-window.login=async()=>{
-  await supabase.auth.signInWithPassword({
-    email:$("email").value,
-    password:$("pass").value
-  });
-  boot();
-};
-
-function renderApp(){
-  document.body.innerHTML=`
-  <div class="container">
-    <div class="topbar">
-      <div class="brand">Rengashotelli</div>
-      <div>
-        <input id="hotel" placeholder="hotel_code" style="width:200px">
-        <button onclick="setHotel()">OK</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <button onclick="intake()">Uusi sisäänotto</button>
-      <button class="secondary" onclick="loadTires()">Renkaat</button>
-      <button class="secondary" onclick="calendar()">Kalenteri</button>
-    </div>
-
-    <div id="content"></div>
-  </div>`;
-}
-
-window.setHotel=()=>{
-  hotel_code=$("hotel").value.trim();
-  alert("Hotel asetettu: "+hotel_code);
-};
-
-//
-// SISÄÄNOTTO
-//
-window.intake=async()=>{
-  const {data:used}=await supabase
-    .from("tires")
-    .select("hyllypaikka")
-    .eq("hotel_code",hotel_code)
-    .eq("poistettu",false);
-
-  const usedSet=new Set((used||[]).map(x=>x.hyllypaikka));
-
-  const {data:loc}=await supabase
-    .from("locations")
-    .select("code")
-    .eq("hotel_code",hotel_code);
-
-  const free=(loc||[]).filter(l=>!usedSet.has(l.code));
-
-  $("content").innerHTML=`
-  <div class="card">
-    <h3>Uusi sisäänotto</h3>
-    <div class="grid">
-      <div><div class="small">Nimi</div><input id="nimi"></div>
-      <div><div class="small">Rekisteri</div><input id="rek"></div>
-      <div><div class="small">Puhelin</div><input id="puh"></div>
-      <div><div class="small">Sähköposti</div><input id="sposti"></div>
-      <div>
-        <div class="small">Hyllypaikka</div>
-        <select id="hylly">
-          ${free.map(f=>`<option>${f.code}</option>`).join("")}
-        </select>
-      </div>
-      <div>
-        <div class="small">Kausimaksu</div>
-        <select id="maksu">
-          <option value="true">Maksettu</option>
-          <option value="false">Ei maksettu</option>
-        </select>
-      </div>
-    </div>
-    <br>
-    <button onclick="saveIntake()">Tallenna</button>
-  </div>`;
-};
-
-window.saveIntake=async()=>{
-  const payload={
-    hotel_code,
-    nimi:$("nimi").value,
-    rekisteri:$("rek").value,
-    puhelin:$("puh").value,
-    sahkoposti:$("sposti").value,
-    hyllypaikka:$("hylly").value,
-    sisaan_pvm:new Date().toISOString().slice(0,10),
-    tila:"Varastossa",
-    poistettu:false,
-    kausimaksu_maksettu:$("maksu").value==="true"
-  };
-
-  const {error}=await supabase.from("tires").insert(payload);
-  if(error)return alert(error.message);
-
-  loadTires();
-};
-
-//
-// RENKAAT
-//
-window.loadTires=async()=>{
-  const {data}=await supabase
-    .from("tires")
-    .select("*")
-    .eq("hotel_code",hotel_code)
-    .eq("poistettu",false)
-    .order("paivitetty",{ascending:false});
-
-  $("content").innerHTML=`
-  <div class="card">
-    <h3>Renkaat</h3>
-    ${data.map(r=>`
-      <div class="tile">
-        <b>${r.rekisteri}</b><br>
-        ${r.nimi}<br>
-        Hylly: ${r.hyllypaikka}
-      </div>
-    `).join("")}
-  </div>`;
-};
-
-//
-// KALENTERI
-//
-window.calendar=async()=>{
-  const {data}=await supabase
-    .from("appointments")
-    .select("*")
-    .eq("hotel_code",hotel_code)
-    .order("start_ts",{ascending:true});
-
-  $("content").innerHTML=`
-  <div class="card">
-    <h3>Varaukset</h3>
-    ${data.map(a=>`
-      <div class="tile">
-        ${a.start_ts}<br>
-        ${a.customer_name||""} ${a.plate||""}
-      </div>
-    `).join("")}
-  </div>`;
-};
-
-boot();
-</script>
+    /* modal */
+    .overlay{position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; padding:14px;}
+    .overlay.show{display:flex;}
+    .modal{width:min(820px, 100%); background:#fff; border-radius:16px; border:1px solid var(--border); padding:12px;}
+    .modal h3{margin:6px 0 10px;}
+    .hint{font-size:12px; color:var(--sub); margin-top:6px;}
+    .k{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; padding:2px 6px; border:1px solid var(--border); border-radius:6px; background:#fff;}
+  </style>
 </head>
-<body></body>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div>
+        <div class="brand">Rengashotelli</div>
+        <div class="muted small">Web – asiakkaat, sisäänotto, renkaat, kalenteri</div>
+      </div>
+
+      <div class="row">
+        <input id="hotelCode" placeholder="hotel_code (esim. Testihotelli)" />
+        <button id="btnReload" class="primary">Päivitä</button>
+        <button id="btnLogout">Ulos</button>
+      </div>
+    </div>
+
+    <div id="status" class="card"><div class="status">Alustetaan…</div></div>
+
+    <div id="authCard" class="card" style="display:none;">
+      <h3>Kirjaudu</h3>
+      <div class="row">
+        <input id="email" type="email" placeholder="Sähköposti" />
+        <input id="password" type="password" placeholder="Salasana" />
+        <button id="btnLogin" class="primary">Kirjaudu</button>
+        <button id="btnSignup" class="ghost">Rekisteröi</button>
+      </div>
+      <div id="authMsg" class="status err" style="display:none; margin-top:10px;"></div>
+    </div>
+
+    <div id="appCard" style="display:none;">
+      <div class="card">
+        <div class="tabs">
+          <button class="tab active" data-view="customers">Asiakkaat</button>
+          <button class="tab" data-view="intake">Sisäänotto</button>
+          <button class="tab" data-view="tires">Renkaat</button>
+          <button class="tab" data-view="calendar">Kalenteri</button>
+          <button class="tab" data-view="settings">Asetukset</button>
+          <span class="pill" id="userPill"></span>
+        </div>
+        <div class="hint">
+          Click = toiminnot • Double = muokkaa • Long (~550ms) = valikko
+        </div>
+      </div>
+
+      <!-- Customers -->
+      <div id="view_customers" class="card">
+        <div class="row">
+          <div>
+            <div class="small muted">customers</div>
+            <div style="font-size:22px; font-weight:900;">Asiakkaat</div>
+          </div>
+          <div style="margin-left:auto" class="row">
+            <input id="custSearch" placeholder="Haku" />
+            <button id="custAdd" class="primary">Lisää</button>
+            <button id="custRefresh">Päivitä</button>
+          </div>
+        </div>
+        <div style="overflow:auto; max-height:65vh; margin-top:10px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Nimi</th><th>Puhelin</th><th>Sähköposti</th><th>Luotu</th><th>Poistettu</th>
+              </tr>
+            </thead>
+            <tbody id="custTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Intake -->
+      <div id="view_intake" class="card" style="display:none;">
+        <div class="row">
+          <div>
+            <div class="small muted">tires + vapaat hyllypaikat</div>
+            <div style="font-size:22px; font-weight:900;">Uusi sisäänotto</div>
+          </div>
+          <div style="margin-left:auto" class="row">
+            <button id="intakeRefresh">Päivitä vapaat paikat</button>
+          </div>
+        </div>
+
+        <div class="hint">Pakolliset: Nimi, Rek, Hyllypaikka. Sisään pvm asetetaan automaattisesti.</div>
+
+        <div class="grid2" style="margin-top:10px;">
+          <div><div class="small muted">Nimi</div><input id="in_nimi"></div>
+          <div><div class="small muted">Rekisteri</div><input id="in_rekisteri"></div>
+          <div><div class="small muted">Puhelin</div><input id="in_puhelin"></div>
+          <div><div class="small muted">Sähköposti</div><input id="in_sahkoposti"></div>
+
+          <div>
+            <div class="small muted">Hyllypaikka (vain vapaat)</div>
+            <select id="in_hyllypaikka"></select>
+          </div>
+          <div>
+            <div class="small muted">Kausimaksu</div>
+            <select id="in_maksettu">
+              <option value="true">Maksettu</option>
+              <option value="false">Ei maksettu</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px;">
+          <button id="in_save" class="primary">Tallenna sisäänotto</button>
+          <span class="pill" id="in_today"></span>
+        </div>
+
+        <div class="hint">
+          Tallennus tekee rivin <span class="k">tires</span>-tauluun ja estää duplicate location -ongelman tarjoamalla vain vapaita paikkoja.
+        </div>
+      </div>
+
+      <!-- Tires -->
+      <div id="view_tires" class="card" style="display:none;">
+        <div class="row">
+          <div>
+            <div class="small muted">tires</div>
+            <div style="font-size:22px; font-weight:900;">Renkaat</div>
+          </div>
+          <div style="margin-left:auto" class="row">
+            <input id="tiresSearch" placeholder="Haku (rek/nimi/hylly)" />
+            <select id="tiresStatus">
+              <option value="">Kaikki tilat</option>
+              <option>Varastossa</option>
+              <option>Luovutettu</option>
+              <option>Poistettu</option>
+            </select>
+            <button id="tiresRefresh">Päivitä</button>
+          </div>
+        </div>
+        <div style="overflow:auto; max-height:65vh; margin-top:10px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Rekisteri</th><th>Nimi</th><th>Puhelin</th><th>Hylly</th><th>Tila</th><th>Sisään</th><th>Maksettu</th>
+              </tr>
+            </thead>
+            <tbody id="tiresTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Calendar -->
+      <div id="view_calendar" class="card" style="display:none;">
+        <div class="row">
+          <div>
+            <div class="small muted">appointments + calendar_blocks</div>
+            <div style="font-size:22px; font-weight:900;">Kalenteri (viikko)</div>
+          </div>
+          <div style="margin-left:auto" class="row">
+            <input id="calWeek" type="date" />
+            <select id="calBay">
+              <option value="1">Paikka 1</option>
+              <option value="2">Paikka 2</option>
+            </select>
+            <button id="calNewAppt" class="primary">Uusi varaus</button>
+            <button id="calNewBlock">Uusi blokki</button>
+            <button id="calRefresh">Päivitä</button>
+          </div>
+        </div>
+        <div class="hint" id="calHint"></div>
+        <div style="overflow:auto; max-height:65vh; margin-top:10px;">
+          <table>
+            <thead id="calThead"></thead>
+            <tbody id="calTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div id="view_settings" class="card" style="display:none;">
+        <div class="row">
+          <div>
+            <div class="small muted">calendar_settings</div>
+            <div style="font-size:22px; font-weight:900;">Asetukset</div>
+          </div>
+          <div style="margin-left:auto" class="row">
+            <button id="setSave" class="primary">Tallenna</button>
+            <button id="setRefresh">Päivitä</button>
+          </div>
+        </div>
+
+        <div class="grid3" style="margin-top:10px;">
+          <div><div class="small muted">Auki</div><input id="setOpen" placeholder="08:00" /></div>
+          <div><div class="small muted">Kiinni</div><input id="setClose" placeholder="17:00" /></div>
+          <div><div class="small muted">Slot minutes</div><input id="setSlot" type="number" min="5" step="5" /></div>
+          <div><div class="small muted">Timezone</div><input id="setTz" placeholder="Europe/Helsinki" /></div>
+          <div>
+            <div class="small muted">Näytä la</div>
+            <select id="setSat"><option value="true">true</option><option value="false">false</option></select>
+          </div>
+          <div>
+            <div class="small muted">Näytä su</div>
+            <select id="setSun"><option value="true">true</option><option value="false">false</option></select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- modal -->
+  <div id="overlay" class="overlay" aria-hidden="true">
+    <div class="modal">
+      <div class="row" style="justify-content:space-between;">
+        <h3 id="modalTitle" style="margin:0;">Toiminnot</h3>
+        <button id="btnClose">Sulje</button>
+      </div>
+
+      <div id="modalActions" style="margin-top:10px;">
+        <div class="row">
+          <button id="actEdit">Muokkaa</button>
+          <button id="actSoftDelete" class="danger">Poista (soft)</button>
+          <button id="actHardDelete" class="danger">Poista (hard)</button>
+        </div>
+        <div class="hint" id="actHint"></div>
+      </div>
+
+      <div id="modalForm" style="display:none; margin-top:10px;">
+        <div id="formArea"></div>
+        <div class="row" style="margin-top:12px;">
+          <button id="formSave" class="primary">Tallenna</button>
+          <button id="formCancel">Peruuta</button>
+        </div>
+        <div class="hint" id="formHint"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    const SUPABASE_URL = "https://xbxmysfxbkcrjsxjtzkz.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_8e1s0Fj93ydy900tLpAwHQ_BAfVDGUq";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const $ = (id) => document.getElementById(id);
+    const LONG_MS = 550;
+
+    const HOTEL_KEY = "rengashotelli_hotel_code";
+    $("hotelCode").value = localStorage.getItem(HOTEL_KEY) || "";
+    $("hotelCode").addEventListener("input", () => localStorage.setItem(HOTEL_KEY, $("hotelCode").value.trim()));
+
+    function setStatus(text, kind=""){ $("status").innerHTML = `<div class="status ${kind}">${escapeHtml(text)}</div>`; }
+    function showAuth(msg=""){
+      $("authCard").style.display = "";
+      $("appCard").style.display = "none";
+      if(msg){ $("authMsg").style.display=""; $("authMsg").textContent=msg; }
+      else { $("authMsg").style.display="none"; $("authMsg").textContent=""; }
+    }
+    function showApp(user){
+      $("authCard").style.display = "none";
+      $("appCard").style.display = "";
+      $("userPill").textContent = user?.email ?? "kirjautunut";
+    }
+
+    // Modal state
+    const overlay = $("overlay");
+    let modalCtx = { kind:null, table:null, row:null, mode:null }; // mode add/edit
+    function openActions(title, hint, canSoft){
+      $("modalTitle").textContent = title;
+      $("actHint").textContent = hint || "";
+      $("modalActions").style.display = "";
+      $("modalForm").style.display = "none";
+      $("actSoftDelete").style.display = canSoft ? "" : "none";
+      overlay.classList.add("show");
+      overlay.setAttribute("aria-hidden","false");
+    }
+    function openForm(title, hint, html){
+      $("modalTitle").textContent = title;
+      $("formArea").innerHTML = html;
+      $("formHint").textContent = hint || "";
+      $("modalActions").style.display = "none";
+      $("modalForm").style.display = "";
+      overlay.classList.add("show");
+      overlay.setAttribute("aria-hidden","false");
+    }
+    function closeModal(){
+      overlay.classList.remove("show");
+      overlay.setAttribute("aria-hidden","true");
+      $("formArea").innerHTML = "";
+      modalCtx = { kind:null, table:null, row:null, mode:null };
+    }
+    $("btnClose").onclick = closeModal;
+    overlay.addEventListener("click", (e) => { if(e.target === overlay) closeModal(); });
+    $("formCancel").onclick = () => openActions("Toiminnot", $("actHint").textContent, $("actSoftDelete").style.display !== "none");
+
+    function attachPressHandlers(el, onPress, onLongPress, onDoublePress){
+      let longTimer = null;
+      let longFired = false;
+
+      el.addEventListener("dblclick", (e) => {
+        e.preventDefault();
+        clearTimeout(longTimer);
+        longFired = true;
+        onDoublePress?.();
+      });
+
+      el.addEventListener("pointerdown", () => {
+        longFired = false;
+        clearTimeout(longTimer);
+        longTimer = setTimeout(() => { longFired = true; onLongPress?.(); }, LONG_MS);
+      });
+
+      const cancel = () => clearTimeout(longTimer);
+      el.addEventListener("pointerup", cancel);
+      el.addEventListener("pointerleave", cancel);
+      el.addEventListener("pointercancel", cancel);
+
+      el.addEventListener("click", (e) => {
+        if(longFired){ e.preventDefault(); return; }
+        onPress?.();
+      });
+    }
+
+    function escapeHtml(s){
+      return String(s ?? "")
+        .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    }
+
+    // Tabs
+    function setActiveView(name){
+      document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.getAttribute("data-view") === name));
+      ["customers","intake","tires","calendar","settings"].forEach(v => {
+        $("view_"+v).style.display = (v===name) ? "" : "none";
+      });
+    }
+    document.querySelectorAll(".tab").forEach(btn => {
+      btn.onclick = async () => {
+        setActiveView(btn.getAttribute("data-view"));
+        await refreshCurrentView();
+      };
+    });
+    async function refreshCurrentView(){
+      const v = document.querySelector(".tab.active")?.getAttribute("data-view");
+      if(v==="customers") return loadCustomers();
+      if(v==="intake") return loadIntake();
+      if(v==="tires") return loadTires();
+      if(v==="calendar") return loadCalendar();
+      if(v==="settings") return loadSettings();
+    }
+    $("btnReload").onclick = refreshCurrentView;
+
+    // Customers
+    let customers = [];
+    async function loadCustomers(){
+      const hotel_code = $("hotelCode").value.trim();
+      if(!hotel_code){ setStatus("Anna hotel_code.", "err"); return; }
+      setStatus("Ladataan asiakkaat…");
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id,nimi,puhelin,sahkoposti,poistettu,created_at")
+        .eq("hotel_code", hotel_code)
+        .order("created_at",{ascending:false});
+      if(error){ setStatus("Customers: "+error.message, "err"); return; }
+      customers = data ?? [];
+      renderCustomers();
+      setStatus("Valmis.", "ok");
+    }
+    function renderCustomers(){
+      const term = $("custSearch").value.trim().toLowerCase();
+      const rows = term ? customers.filter(r => JSON.stringify(r).toLowerCase().includes(term)) : customers;
+      $("custTbody").innerHTML = rows.map(r => `
+        <tr data-id="${r.id}">
+          <td><b>${escapeHtml(r.nimi||"")}</b></td>
+          <td>${escapeHtml(r.puhelin||"")}</td>
+          <td>${escapeHtml(r.sahkoposti||"")}</td>
+          <td class="small">${r.created_at ? new Date(r.created_at).toLocaleString("fi-FI") : ""}</td>
+          <td class="small">${r.poistettu ? `<span class="pill">kyllä</span>` : ""}</td>
+        </tr>
+      `).join("");
+
+      [...$("custTbody").querySelectorAll("tr[data-id]")].forEach(tr => {
+        const id = tr.getAttribute("data-id");
+        const row = customers.find(x => x.id === id);
+        attachPressHandlers(
+          tr,
+          () => { modalCtx={kind:"customers",table:"customers",row,mode:null}; openActions("Asiakas • toiminnot","Soft delete: poistettu=true", true); },
+          () => { modalCtx={kind:"customers",table:"customers",row,mode:null}; openActions("Asiakas • toiminnot","Soft delete: poistettu=true", true); },
+          () => openCustomerEdit(row)
+        );
+      });
+    }
+    function openCustomerEdit(row){
+      modalCtx={kind:"customers",table:"customers",row,mode:"edit"};
+      openForm("Muokkaa asiakas","",`
+        <div class="grid2">
+          <div><div class="small muted">Nimi</div><input id="f_nimi" value="${escapeHtml(row?.nimi||"")}"></div>
+          <div><div class="small muted">Puhelin</div><input id="f_puhelin" value="${escapeHtml(row?.puhelin||"")}"></div>
+          <div><div class="small muted">Sähköposti</div><input id="f_sahkoposti" value="${escapeHtml(row?.sahkoposti||"")}"></div>
+        </div>
+      `);
+    }
+    function openCustomerAdd(){
+      modalCtx={kind:"customers",table:"customers",row:null,mode:"add"};
+      openForm("Lisää asiakas","",`
+        <div class="grid2">
+          <div><div class="small muted">Nimi</div><input id="f_nimi"></div>
+          <div><div class="small muted">Puhelin</div><input id="f_puhelin"></div>
+          <div><div class="small muted">Sähköposti</div><input id="f_sahkoposti"></div>
+        </div>
+      `);
+    }
+    $("custRefresh").onclick = loadCustomers;
+    $("custSearch").addEventListener("input", renderCustomers);
+    $("custAdd").onclick = openCustomerAdd;
+
+    // Intake (free locations)
+    async function loadIntake(){
+      const hotel_code = $("hotelCode").value.trim();
+      if(!hotel_code){ setStatus("Anna hotel_code.", "err"); return; }
+      $("in_today").textContent = "Sisään: " + new Date().toISOString().slice(0,10);
+      await fillFreeLocations();
+      setStatus("Valmis.", "ok");
+    }
+    async function fillFreeLocations(){
+      const hotel_code = $("hotelCode").value.trim();
+
+      const { data: used, error: usedErr } = await supabase
+        .from("tires")
+        .select("hyllypaikka")
+        .eq("hotel_code", hotel_code)
+        .eq("poistettu", false);
+      if(usedErr){ setStatus("Free locations: "+usedErr.message, "err"); return; }
+
+      const usedSet = new Set((used ?? []).map(x => x.hyllypaikka).filter(Boolean));
+
+      const { data: loc, error: locErr } = await supabase
+        .from("locations")
+        .select("code,label")
+        .eq("hotel_code", hotel_code)
+        .order("code",{ascending:true});
+      if(locErr){ setStatus("Locations: "+locErr.message, "err"); return; }
+
+      const free = (loc ?? []).filter(l => !usedSet.has(l.code));
+      $("in_hyllypaikka").innerHTML = free.map(l => `<option value="${escapeHtml(l.code)}">${escapeHtml(l.code)} - ${escapeHtml(l.label||"")}</option>`).join("");
+    }
+    $("intakeRefresh").onclick = fillFreeLocations;
+
+    $("in_save").onclick = async () => {
+      const hotel_code = $("hotelCode").value.trim();
+      if(!hotel_code){ setStatus("Anna hotel_code.", "err"); return; }
+
+      const payload = {
+        hotel_code,
+        nimi: $("in_nimi").value.trim(),
+        rekisteri: $("in_rekisteri").value.trim(),
+        puhelin: $("in_puhelin").value.trim() || null,
+        sahkoposti: $("in_sahkoposti").value.trim() || null,
+        hyllypaikka: $("in_hyllypaikka").value,
+        sisaan_pvm: new Date().toISOString().slice(0,10),
+        tila: "Varastossa",
+        poistettu: false,
+        kausimaksu_maksettu: $("in_maksettu").value === "true",
+        paivitetty: new Date().toISOString()
+      };
+
+      if(!payload.nimi || !payload.rekisteri || !payload.hyllypaikka){
+        setStatus("Puuttuu: nimi, rekisteri tai hyllypaikka.", "err");
+        return;
+      }
+
+      // Viimeinen turvatarkistus: hyllypaikka vapaa
+      const { data: conflict } = await supabase
+        .from("tires")
+        .select("id,rekisteri")
+        .eq("hotel_code", hotel_code)
+        .eq("hyllypaikka", payload.hyllypaikka)
+        .eq("poistettu", false)
+        .limit(1);
+      if(conflict?.length){
+        setStatus(`Hyllypaikka ${payload.hyllypaikka} ei ole vapaa (${conflict[0].rekisteri}). Päivitä vapaat paikat.`, "err");
+        return;
+      }
+
+      const { error } = await supabase.from("tires").insert(payload);
+      if(error){ setStatus("Sisäänotto: " + error.message, "err"); return; }
+
+      // tyhjennä kentät
+      $("in_nimi").value=""; $("in_rekisteri").value=""; $("in_puhelin").value=""; $("in_sahkoposti").value="";
+      await fillFreeLocations();
+      setStatus("Sisäänotto tallennettu.", "ok");
+    };
+
+    // Tires
+    let tires = [];
+    async function loadTires(){
+      const hotel_code = $("hotelCode").value.trim();
+      if(!hotel_code){ setStatus("Anna hotel_code.", "err"); return; }
+      setStatus("Ladataan renkaat…");
+      const { data, error } = await supabase
+        .from("tires")
+        .select("id,rekisteri,nimi,puhelin,hyllypaikka,tila,sisaan_pvm,poistettu,kausimaksu_maksettu,paivitetty")
+        .eq("hotel_code", hotel_code)
+        .order("paivitetty",{ascending:false});
+      if(error){ setStatus("Tires: "+error.message, "err"); return; }
+      tires = data ?? [];
+      renderTires();
+      setStatus("Valmis.", "ok");
+    }
+    function renderTires(){
+      const term = $("tiresSearch").value.trim().toLowerCase();
+      const st = $("tiresStatus").value.trim();
+      let rows = tires;
+      if(st) rows = rows.filter(r => String(r.tila||"") === st);
+      if(term) rows = rows.filter(r => `${r.rekisteri||""} ${r.nimi||""} ${r.hyllypaikka||""}`.toLowerCase().includes(term));
+      $("tiresTbody").innerHTML = rows.map(r => `
+        <tr data-id="${r.id}">
+          <td><b>${escapeHtml(r.rekisteri||"")}</b></td>
+          <td>${escapeHtml(r.nimi||"")}</td>
+          <td>${escapeHtml(r.puhelin||"")}</td>
+          <td>${escapeHtml(r.hyllypaikka||"")}</td>
+          <td>${escapeHtml(r.tila||"")}</td>
+          <td class="small">${escapeHtml(r.sisaan_pvm||"")}</td>
+          <td class="small">${r.kausimaksu_maksettu ? `<span class="pill">kyllä</span>` : `<span class="pill">ei</span>`}</td>
+        </tr>
+      `).join("");
+    }
+    $("tiresRefresh").onclick = loadTires;
+    $("tiresSearch").addEventListener("input", renderTires);
+    $("tiresStatus").addEventListener("change", renderTires);
+
+    // Settings
+    let calSettings = null;
+    async function loadSettings(){
+      const hotel_code = $("hotelCode").value.trim();
+      if(!hotel_code){ setStatus("Anna hotel_code.", "err"); return; }
+      setStatus("Ladataan asetukset…");
+      const { data, error } = await supabase
+        .from("calendar_settings")
+        .select("hotel_code,open_time,close_time,slot_minutes,timezone,show_saturday,show_sunday,updated_at")
+        .eq("hotel_code", hotel_code)
+        .maybeSingle();
+      if(error){ setStatus("Settings: "+error.message, "err"); return; }
+      calSettings = data ?? null;
+
+      $("setOpen").value = calSettings?.open_time ? String(calSettings.open_time).slice(0,5) : "08:00";
+      $("setClose").value = calSettings?.close_time ? String(calSettings.close_time).slice(0,5) : "17:00";
+      $("setSlot").value = calSettings?.slot_minutes ?? 20;
+      $("setTz").value = calSettings?.timezone ?? "Europe/Helsinki";
+      $("setSat").value = String(calSettings?.show_saturday ?? true);
+      $("setSun").value = String(calSettings?.show_sunday ?? true);
+
+      setStatus("Valmis.", "ok");
+    }
+    $("setRefresh").onclick = loadSettings;
+    $("setSave").onclick = async () => {
+      const hotel_code = $("hotelCode").value.trim();
+      if(!hotel_code){ setStatus("Anna hotel_code.", "err"); return; }
+
+      const payload = {
+        hotel_code,
+        open_time: ($("setOpen").value || "08:00") + ":00",
+        close_time: ($("setClose").value || "17:00") + ":00",
+        slot_minutes: Number($("setSlot").value || 20),
+        timezone: $("setTz").value || "Europe/Helsinki",
+        show_saturday: $("setSat").value === "true",
+        show_sunday: $("setSun").value === "true",
+        updated_at: new Date().toISOString()
+      };
+      setStatus("Tallennetaan asetukset…");
+      const { error } = await supabase.from("calendar_settings").upsert(payload);
+      if(error){ setStatus("Save settings: "+error.message, "err"); return; }
+      setStatus("Tallennettu.", "ok");
+      await loadSettings();
+    };
+
+    // Calendar
+    let appts = [];
+    let blocks = [];
+
+    function isoDate(d){ return new Date(d).toISOString().slice(0,10); }
+    function startOfWeekMonday(date){
+      const d = new Date(date);
+      const day = (d.getDay()+6)%7; // Mon=0
+      d.setHours(0,0,0,0);
+      d.setDate(d.getDate() - day);
+      return d;
+    }
+    function addDays(d, n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+    function pad2(n){ return String(n).padStart(2,"0"); }
+    function timeToMinutes(hhmm){
+      const [h,m] = String(hhmm||"00:00").slice(0,5).split(":").map(Number);
+      return (h*60)+(m||0);
+    }
+    function minutesToHHMM(min){
+      const h = Math.floor(min/60);
+      const m = min%60;
+      return `${pad2(h)}:${pad2(m)}`;
+    }
+    function sameDay(ts, dayDate){
+      const d = new Date(ts);
+      return d.getFullYear()===dayDate.getFullYear() && d.getMonth()===dayDate.getMonth() && d.getDate()===dayDate.getDate();
+    }
+    function startMinute(ts){
+      const d = new Date(ts);
+      return d.getHours()*60 + d.getMinutes();
+    }
+
+    (function initWeek(){
+      const w = startOfWeekMonday(new Date());
+      $("calWeek").value = isoDate(w);
+    })();
+
+    async function loadCalendar(){
+      const hotel_code = $("hotelCode").value.trim();
+      if(!hotel_code){ setStatus("Anna hotel_code.", "err"); return; }
+
+      await loadSettings().catch(()=>{});
+
+      const openHHMM = $("setOpen").value || "08:00";
+      const closeHHMM = $("setClose").value || "17:00";
+      const slotMin = Number($("setSlot").value || 20);
+
+      const weekStart = startOfWeekMonday(new Date($("calWeek").value || new Date()));
+      $("calWeek").value = isoDate(weekStart);
+
+      const showSat = $("setSat").value === "true";
+      const showSun = $("setSun").value === "true";
+      const days = [0,1,2,3,4,5,6].filter(d => (d<5) || (d===5 && showSat) || (d===6 && showSun));
+
+      const rangeStart = new Date(weekStart); rangeStart.setHours(0,0,0,0);
+      const rangeEnd = addDays(rangeStart, 7);
+      const bay = Number($("calBay").value || 1);
+
+      setStatus("Ladataan kalenteri…");
+
+      const [{data:aData, error:aErr},{data:bData, error:bErr}] = await Promise.all([
+        supabase.from("appointments")
+          .select("id,hotel_code,start_ts,end_ts,customer_name,phone,plate,notes,status,created_at,bay")
+          .eq("hotel_code", hotel_code)
+          .eq("bay", bay)
+          .gte("start_ts", rangeStart.toISOString())
+          .lt("start_ts", rangeEnd.toISOString())
+          .order("start_ts",{ascending:true}),
+        supabase.from("calendar_blocks")
+          .select("id,hotel_code,start_ts,end_ts,kind,title,notes,created_at")
+          .eq("hotel_code", hotel_code)
+          .gte("start_ts", rangeStart.toISOString())
+          .lt("start_ts", rangeEnd.toISOString())
+          .order("start_ts",{ascending:true})
+      ]);
+
+      if(aErr){ setStatus("Appointments: "+aErr.message, "err"); return; }
+      if(bErr){ setStatus("Blocks: "+bErr.message, "err"); return; }
+      appts = aData ?? [];
+      blocks = bData ?? [];
+
+      const dayNames = ["Ma","Ti","Ke","To","Pe","La","Su"];
+      $("calThead").innerHTML = `
+        <tr>
+          <th style="min-width:92px;">Aika</th>
+          ${days.map(d => {
+            const date = addDays(weekStart, d);
+            return `<th>${dayNames[d]}<div class="small muted">${date.toLocaleDateString("fi-FI")}</div></th>`;
+          }).join("")}
+        </tr>
+      `;
+
+      const openMin = timeToMinutes(openHHMM);
+      const closeMin = timeToMinutes(closeHHMM);
+      const slots = [];
+      for(let m=openMin; m<closeMin; m+=slotMin) slots.push(m);
+
+      $("calHint").textContent = `Auki ${openHHMM}–${closeHHMM}, slot ${slotMin}min, paikka ${bay}. Klikkaa solua → uusi varaus tähän aikaan.`;
+
+      $("calTbody").innerHTML = slots.map(min => `
+        <tr>
+          <td class="small"><b>${minutesToHHMM(min)}</b></td>
+          ${days.map(d => {
+            const dayDate = addDays(weekStart, d);
+            const dayAppts = appts.filter(a => sameDay(a.start_ts, dayDate) && startMinute(a.start_ts) === min);
+            const dayBlocks = blocks.filter(b => sameDay(b.start_ts, dayDate) && startMinute(b.start_ts) === min);
+
+            const cellItems = [
+              ...dayBlocks.map(b => `<div class="pill" data-kind="block" data-id="${b.id}">⛔ ${escapeHtml(b.title || b.kind)}</div>`),
+              ...dayAppts.map(a => `<div class="pill" data-kind="appt" data-id="${a.id}">📅 ${escapeHtml(a.customer_name || "")} ${escapeHtml(a.plate || "")}</div>`)
+            ].join("<div style='height:6px'></div>");
+
+            return `<td data-day="${d}" data-min="${min}">${cellItems || ""}</td>`;
+          }).join("")}
+        </tr>
+      `).join("");
+
+      // cell click creates appt at that time
+      [...$("calTbody").querySelectorAll("td[data-day]")].forEach(td => {
+        td.addEventListener("click", async (e) => {
+          if(e.target?.getAttribute?.("data-kind")) return;
+          const dayOffset = Number(td.getAttribute("data-day"));
+          const min = Number(td.getAttribute("data-min"));
+          const date = addDays(weekStart, dayOffset);
+          openApptAddWithStart(date, minutesToHHMM(min));
+        });
+      });
+
+      // click pills to edit
+      [...$("calTbody").querySelectorAll("[data-kind][data-id]")].forEach(el => {
+        el.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const kind = el.getAttribute("data-kind");
+          const id = el.getAttribute("data-id");
+          if(kind==="appt"){
+            const row = appts.find(x => x.id === id);
+            openApptEdit(row);
+          } else {
+            const row = blocks.find(x => x.id === id);
+            openBlockEdit(row);
+          }
+        });
+      });
+
+      setStatus("Valmis.", "ok");
+    }
+
+    function apptFormHtml(r, startIso, endIso){
+      const bay = Number($("calBay").value || 1);
+      return `
+        <div class="grid2">
+          <div><div class="small muted">Alku (ISO)</div><input id="f_start_ts" value="${escapeHtml(startIso || r?.start_ts || "")}"></div>
+          <div><div class="small muted">Loppu (ISO)</div><input id="f_end_ts" value="${escapeHtml(endIso || r?.end_ts || "")}"></div>
+          <div><div class="small muted">Rekisteri</div><input id="f_plate" value="${escapeHtml(r?.plate ?? "")}" placeholder="ABC-123"></div>
+          <div><div class="small muted">Asiakas</div><input id="f_customer_name" value="${escapeHtml(r?.customer_name ?? "")}"></div>
+          <div><div class="small muted">Puhelin</div><input id="f_phone" value="${escapeHtml(r?.phone ?? "")}"></div>
+          <div><div class="small muted">Status</div><input id="f_status" value="${escapeHtml(r?.status ?? "Vahvistettu")}"></div>
+          <div><div class="small muted">Paikka (bay)</div><input id="f_bay" type="number" min="1" max="2" value="${escapeHtml(r?.bay ?? bay)}"></div>
+          <div style="grid-column:1/-1"><div class="small muted">Muistiinpanot</div><textarea id="f_notes">${escapeHtml(r?.notes ?? "")}</textarea></div>
+        </div>
+        <div class="hint">Kun syötät rekisterin ja tallennat, web tarkistaa löytyykö sama rekisteri <span class="k">tires</span>-listasta ja voi täyttää nimen/puhelimen.</div>
+      `;
+    }
+
+    function openApptAddWithStart(date, hhmm){
+      const [h,m]=hhmm.split(":").map(Number);
+      const start = new Date(date); start.setHours(h,m,0,0);
+      const slot = Number($("setSlot").value || 20);
+      const end = new Date(start); end.setMinutes(end.getMinutes()+slot);
+      modalCtx={kind:"appointments",table:"appointments",row:null,mode:"add"};
+      openForm("Uusi varaus","hotel_code asetetaan automaattisesti.", apptFormHtml(null, start.toISOString(), end.toISOString()));
+    }
+    function openApptEdit(row){
+      modalCtx={kind:"appointments",table:"appointments",row,mode:"edit"};
+      openForm("Muokkaa varaus","", apptFormHtml(row));
+    }
+
+    function blockFormHtml(r, startIso, endIso){
+      return `
+        <div class="grid2">
+          <div><div class="small muted">Alku (ISO)</div><input id="f_start_ts" value="${escapeHtml(startIso || r?.start_ts || "")}"></div>
+          <div><div class="small muted">Loppu (ISO)</div><input id="f_end_ts" value="${escapeHtml(endIso || r?.end_ts || "")}"></div>
+          <div><div class="small muted">Kind</div><input id="f_kind" value="${escapeHtml(r?.kind ?? "tauko")}"></div>
+          <div><div class="small muted">Title</div><input id="f_title" value="${escapeHtml(r?.title ?? "")}"></div>
+          <div style="grid-column:1/-1"><div class="small muted">Notes</div><textarea id="f_notes">${escapeHtml(r?.notes ?? "")}</textarea></div>
+        </div>
+      `;
+    }
+    function openBlockNew(){
+      const now = new Date();
+      now.setMinutes(Math.ceil(now.getMinutes()/20)*20,0,0);
+      const end = new Date(now); end.setMinutes(end.getMinutes()+Number($("setSlot").value||20));
+      modalCtx={kind:"calendar_blocks",table:"calendar_blocks",row:null,mode:"add"};
+      openForm("Uusi blokki","hotel_code asetetaan automaattisesti.", blockFormHtml(null, now.toISOString(), end.toISOString()));
+    }
+    function openBlockEdit(row){
+      modalCtx={kind:"calendar_blocks",table:"calendar_blocks",row,mode:"edit"};
+      openForm("Muokkaa blokki","", blockFormHtml(row));
+    }
+
+    $("calRefresh").onclick = loadCalendar;
+    $("calBay").addEventListener("change", loadCalendar);
+    $("calNewAppt").onclick = () => openApptAddWithStart(startOfWeekMonday(new Date($("calWeek").value)), $("setOpen").value || "08:00");
+    $("calNewBlock").onclick = openBlockNew;
+
+    // Modal action buttons
+    $("actEdit").onclick = () => {
+      if(modalCtx.kind==="customers") return openCustomerEdit(modalCtx.row);
+      if(modalCtx.kind==="appointments") return openApptEdit(modalCtx.row);
+      if(modalCtx.kind==="calendar_blocks") return openBlockEdit(modalCtx.row);
+      // tires edit not implemented here to keep flow simple: use intake for new rows
+    };
+
+    $("actSoftDelete").onclick = async () => {
+      const hotel_code = $("hotelCode").value.trim();
+      if(!hotel_code || !modalCtx.table || !modalCtx.row) return;
+      if(!confirm("Merkitäänkö poistetuksi (poistettu=true)?")) return;
+
+      if(modalCtx.table === "customers"){
+        const { error } = await supabase.from("customers").update({ poistettu:true, paivitetty:new Date().toISOString() }).eq("id", modalCtx.row.id);
+        if(error) return setStatus("Soft delete: "+error.message,"err");
+        closeModal(); await loadCustomers(); return;
+      }
+    };
+
+    $("actHardDelete").onclick = async () => {
+      if(!modalCtx.table || !modalCtx.row) return;
+      if(!confirm("Poistetaanko pysyvästi (hard delete)?")) return;
+      const { error } = await supabase.from(modalCtx.table).delete().eq("id", modalCtx.row.id);
+      if(error) return setStatus("Hard delete: "+error.message,"err");
+      closeModal();
+      await refreshCurrentView();
+    };
+
+    $("formSave").onclick = async () => {
+      const hotel_code = $("hotelCode").value.trim();
+      if(!hotel_code){ setStatus("Anna hotel_code.", "err"); return; }
+
+      try{
+        if(modalCtx.table==="customers"){
+          const payload = {
+            hotel_code,
+            nimi: $("f_nimi").value.trim(),
+            puhelin: $("f_puhelin").value.trim() || null,
+            sahkoposti: $("f_sahkoposti").value.trim() || null,
+            paivitetty: new Date().toISOString()
+          };
+          if(!payload.nimi) return setStatus("Nimi puuttuu.", "err");
+          const q = modalCtx.mode==="add"
+            ? supabase.from("customers").insert(payload)
+            : supabase.from("customers").update(payload).eq("id", modalCtx.row.id);
+          const { error } = await q;
+          if(error) throw error;
+          closeModal(); await loadCustomers(); return;
+        }
+
+        if(modalCtx.table==="appointments"){
+          const payload = {
+            hotel_code,
+            start_ts: $("f_start_ts").value.trim(),
+            end_ts: $("f_end_ts").value.trim(),
+            plate: $("f_plate").value.trim() || null,
+            customer_name: $("f_customer_name").value.trim() || null,
+            phone: $("f_phone").value.trim() || null,
+            notes: $("f_notes").value || null,
+            status: $("f_status").value.trim() || "Vahvistettu",
+            bay: Number($("f_bay").value || $("calBay").value || 1)
+          };
+
+          // Rekisterin täsmäys tires-listaan (kuten sovelluksessa)
+          if(payload.plate){
+            const { data: tmatch } = await supabase
+              .from("tires")
+              .select("nimi,puhelin")
+              .eq("hotel_code", hotel_code)
+              .eq("rekisteri", payload.plate)
+              .eq("poistettu", false)
+              .limit(1);
+            if(tmatch?.length){
+              const t = tmatch[0];
+              const ok = confirm(`Rekisteri löytyy varastosta.\nTäytetäänkö nimi/puhelin?\n\n${t.nimi||""} / ${t.puhelin||""}`);
+              if(ok){
+                payload.customer_name = payload.customer_name || t.nimi || payload.customer_name;
+                payload.phone = payload.phone || t.puhelin || payload.phone;
+              }
+            }
+          }
+
+          const q = modalCtx.mode==="add"
+            ? supabase.from("appointments").insert(payload)
+            : supabase.from("appointments").update(payload).eq("id", modalCtx.row.id);
+
+          const { error } = await q;
+          if(error) throw error;
+
+          closeModal(); await loadCalendar(); return;
+        }
+
+        if(modalCtx.table==="calendar_blocks"){
+          const payload = {
+            hotel_code,
+            start_ts: $("f_start_ts").value.trim(),
+            end_ts: $("f_end_ts").value.trim(),
+            kind: $("f_kind").value.trim() || "tauko",
+            title: $("f_title").value.trim() || null,
+            notes: $("f_notes").value || null
+          };
+
+          const q = modalCtx.mode==="add"
+            ? supabase.from("calendar_blocks").insert(payload)
+            : supabase.from("calendar_blocks").update(payload).eq("id", modalCtx.row.id);
+
+          const { error } = await q;
+          if(error) throw error;
+
+          closeModal(); await loadCalendar(); return;
+        }
+
+      } catch(e){
+        setStatus("Tallennus: " + (e?.message || String(e)), "err");
+      }
+    };
+
+    // Auth
+    $("btnLogin").onclick = async () => {
+      const { error } = await supabase.auth.signInWithPassword({ email: $("email").value.trim(), password: $("password").value });
+      if(error) return showAuth(error.message);
+      await boot();
+    };
+    $("btnSignup").onclick = async () => {
+      const { error } = await supabase.auth.signUp({ email: $("email").value.trim(), password: $("password").value });
+      if(error) return showAuth(error.message);
+      showAuth("Rekisteröity. Tarkista sähköposti jos vahvistus on käytössä.");
+    };
+    $("btnLogout").onclick = async () => { await supabase.auth.signOut(); showAuth(); setStatus("Uloskirjattu."); };
+
+    async function boot(){
+      setStatus("Tarkistetaan sessio…");
+      const { data: { session } } = await supabase.auth.getSession();
+      if(!session?.user){
+        showAuth();
+        setStatus("Kirjaudu sisään.");
+        return;
+      }
+      showApp(session.user);
+      setActiveView("customers");
+      await refreshCurrentView();
+    }
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      if(session?.user) boot();
+      else showAuth();
+    });
+
+    await boot();
+  </script>
+</body>
 </html>
