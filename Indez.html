@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="fi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rengashotelli – Web</title>
+  <style>
+    body { font-family: system-ui, Arial; margin: 20px; max-width: 980px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    input, button, select { padding:10px; font-size:16px; }
+    button { cursor:pointer; }
+    table { width:100%; border-collapse:collapse; margin-top:12px; }
+    th, td { border:1px solid #ddd; padding:10px; text-align:left; }
+    th { background:#f6f6f6; }
+    .card { border:1px solid #ddd; padding:14px; border-radius:10px; margin: 12px 0; }
+    .muted { opacity:0.75; }
+    .error { color:#b00020; }
+    .ok { color:#1b5e20; }
+  </style>
+</head>
+<body>
+  <h1>Rengashotelli – Web</h1>
+  <div class="muted">Kirjautuminen Supabase Authilla. Näyttää asiakkaat ja mahdollistaa perustoiminnot.</div>
+
+  <div id="status" class="card muted">Alustetaan…</div>
+
+  <div id="authCard" class="card" style="display:none;">
+    <h3>Kirjaudu</h3>
+    <div class="row">
+      <input id="email" type="email" placeholder="Sähköposti" />
+      <input id="password" type="password" placeholder="Salasana" />
+      <button id="btnLogin">Kirjaudu</button>
+      <button id="btnSignup" class="muted">Rekisteröi</button>
+    </div>
+    <div class="muted" style="margin-top:8px;">
+      Rekisteröinti toimii vain jos Supabase Auth -asetukset sallii sen.
+    </div>
+    <div id="authMsg" class="error" style="margin-top:8px;"></div>
+  </div>
+
+  <div id="appCard" class="card" style="display:none;">
+    <div class="row" style="justify-content:space-between;">
+      <div>
+        <div><b>Käyttäjä:</b> <span id="userEmail"></span></div>
+        <div class="muted"><b>Hotel code:</b> <input id="hotelCode" placeholder="esim. HOTEL1" style="padding:8px;" /></div>
+      </div>
+      <div class="row">
+        <button id="btnRefresh">Päivitä</button>
+        <button id="btnLogout">Kirjaudu ulos</button>
+      </div>
+    </div>
+
+    <hr />
+
+    <h3>Asiakkaat</h3>
+
+    <div class="row">
+      <input id="newName" placeholder="Nimi" />
+      <input id="newPhone" placeholder="Puhelin" />
+      <button id="btnAdd">Lisää</button>
+    </div>
+
+    <div id="msg" style="margin-top:10px;"></div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Nimi</th>
+          <th>Puhelin</th>
+          <th>Luotu</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+
+    <div class="muted" style="margin-top:10px;">
+      Taulu oletuksena: <code>customers</code> sarakkeilla <code>id</code>, <code>name</code>, <code>phone</code>, <code>hotel_code</code>, <code>created_at</code>.
+      Jos nimet eroaa, sanot vaan taulun/sarakkeiden nimet niin muutan koodin.
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    // === ASETUKSET ===
+    const supabaseUrl = "https://xbxmysfxbkcrjsxjtzkz.supabase.co";
+    const supabaseAnonKey = "sb_publishable_8e1s0Fj93ydy900tLpAwHQ_BAfVDGUq"; // <- liitä sb_publishable_... tähän
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+    const $ = (id) => document.getElementById(id);
+
+    const status = $("status");
+    const authCard = $("authCard");
+    const appCard = $("appCard");
+    const authMsg = $("authMsg");
+    const msg = $("msg");
+    const tbody = $("tbody");
+
+    function setStatus(text, cls="muted") {
+      status.className = "card " + cls;
+      status.textContent = text;
+    }
+
+    function showAuth(message="") {
+      authCard.style.display = "";
+      appCard.style.display = "none";
+      authMsg.textContent = message;
+    }
+
+    function showApp(user) {
+      authCard.style.display = "none";
+      appCard.style.display = "";
+      $("userEmail").textContent = user?.email ?? "";
+    }
+
+    function setMsg(text, ok=true) {
+      msg.className = ok ? "ok" : "error";
+      msg.textContent = text;
+      setTimeout(() => { msg.textContent = ""; msg.className = ""; }, 4000);
+    }
+
+    async function loadCustomers() {
+      const hotelCode = $("hotelCode").value.trim();
+      if (!hotelCode) {
+        tbody.innerHTML = "";
+        setMsg("Anna hotel code (esim. HOTEL1).", false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id,name,phone,created_at")
+        .eq("hotel_code", hotelCode)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        setMsg("Haku epäonnistui: " + error.message, false);
+        tbody.innerHTML = "";
+        return;
+      }
+
+      tbody.innerHTML = (data ?? []).map(row => `
+        <tr>
+          <td>${escapeHtml(row.name ?? "")}</td>
+          <td>${escapeHtml(row.phone ?? "")}</td>
+          <td>${row.created_at ? new Date(row.created_at).toLocaleString("fi-FI") : ""}</td>
+          <td><button data-del="${row.id}">Poista</button></td>
+        </tr>
+      `).join("");
+
+      // bind delete buttons
+      [...document.querySelectorAll("button[data-del]")].forEach(btn => {
+        btn.onclick = async () => {
+          const id = btn.getAttribute("data-del");
+          if (!confirm("Poistetaanko asiakas?")) return;
+
+          const { error } = await supabase
+            .from("customers")
+            .delete()
+            .eq("id", id);
+
+          if (error) return setMsg("Poisto epäonnistui: " + error.message, false);
+          setMsg("Poistettu.");
+          await loadCustomers();
+        };
+      });
+    }
+
+    $("btnAdd").onclick = async () => {
+      const hotelCode = $("hotelCode").value.trim();
+      const name = $("newName").value.trim();
+      const phone = $("newPhone").value.trim();
+      if (!hotelCode) return setMsg("Anna hotel code.", false);
+      if (!name) return setMsg("Anna nimi.", false);
+
+      const { error } = await supabase
+        .from("customers")
+        .insert({ hotel_code: hotelCode, name, phone });
+
+      if (error) return setMsg("Lisäys epäonnistui: " + error.message, false);
+
+      $("newName").value = "";
+      $("newPhone").value = "";
+      setMsg("Lisätty.");
+      await loadCustomers();
+    };
+
+    $("btnRefresh").onclick = loadCustomers;
+
+    $("btnLogout").onclick = async () => {
+      await supabase.auth.signOut();
+      showAuth();
+      setStatus("Uloskirjattu.", "muted");
+    };
+
+    $("btnLogin").onclick = async () => {
+      authMsg.textContent = "";
+      const email = $("email").value.trim();
+      const password = $("password").value;
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return (authMsg.textContent = error.message);
+      showApp(data.user);
+      setStatus("Kirjautunut sisään.", "ok");
+      await loadCustomers();
+    };
+
+    $("btnSignup").onclick = async () => {
+      authMsg.textContent = "";
+      const email = $("email").value.trim();
+      const password = $("password").value;
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) return (authMsg.textContent = error.message);
+      authMsg.textContent = "Rekisteröity. Tarkista sähköposti, jos vahvistus on käytössä.";
+    };
+
+    // auth state
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      showApp(session.user);
+      setStatus("Valmis.", "ok");
+      await loadCustomers();
+    } else {
+      showAuth();
+      setStatus("Kirjaudu sisään.", "muted");
+    }
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) showApp(session.user);
+      else showAuth();
+    });
+
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+  </script>
+</body>
+</html>
