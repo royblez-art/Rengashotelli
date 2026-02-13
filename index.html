@@ -171,6 +171,8 @@
         font-weight: 800;
         color: #0f172a;
         white-space: pre-line;
+        overflow-wrap: anywhere;
+        word-break: break-word;
         cursor: pointer;
         user-select: none;
       }
@@ -296,14 +298,21 @@
         return `${y}-${m}-${day}`;
       }
       function getIsoWeekNumber(isoMonday) {
-        // isoMonday: YYYY-MM-DD (Monday of week)
-        const d = new Date(`${String(isoMonday || "").slice(0, 10)}T00:00:00Z`);
+        // isoMonday: YYYY-MM-DD (Monday of ISO week)
+        const raw = String(isoMonday || "").slice(0, 10);
+        const d = new Date(`${raw}T12:00:00Z`); // midday avoids DST edge cases
         if (!Number.isFinite(d.getTime())) return 0;
-        // Thursday in current week decides week year.
-        d.setUTCDate(d.getUTCDate() + 3);
-        const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
-        const diffDays = Math.round((d.getTime() - firstThursday.getTime()) / 86400000);
-        return 1 + Math.floor(diffDays / 7);
+
+        // Move to Thursday of this ISO week.
+        const day = (d.getUTCDay() + 6) % 7; // Mon=0..Sun=6
+        d.setUTCDate(d.getUTCDate() - day + 3);
+
+        // Thursday of week 1 (week containing Jan 4)
+        const week1 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4, 12, 0, 0));
+        const week1Day = (week1.getUTCDay() + 6) % 7;
+        week1.setUTCDate(week1.getUTCDate() - week1Day + 3);
+
+        return 1 + Math.round((d.getTime() - week1.getTime()) / 604800000);
       }
       function formatDateShort(isoDate, fallback = "—") {
         const raw = String(isoDate || "").trim();
@@ -4782,31 +4791,45 @@
             </div>
           </div>
 
-          ${isAdmin ? `
-            <div class="row" style="margin-top: 12px;">
-              <div class="col">
-                <div class="card pad">
-                  <div style="display:flex; align-items:center; justify-content:space-between;">
-                    <div style="font-weight:900">Käyttäjät</div>
-                    <button class="btn primary" id="userAddBtn">Luo / päivitä</button>
-                  </div>
-                  <div class="divider"></div>
-                  <div class="list" id="userList"></div>
-                </div>
-              </div>
-              <div class="col">
-                <div class="card pad">
-                  <div style="display:flex; align-items:center; justify-content:space-between;">
-                    <div style="font-weight:900">Hyllypaikkojen hallinta</div>
-                    <button class="btn primary" id="locAddBtn">Lisää</button>
-                  </div>
-                  <div class="divider"></div>
-                  <div class="list" id="locList"></div>
-                </div>
-              </div>
-            </div>
-          ` : ``}
-        `;
+           ${isAdmin ? `
+             <div class="row" style="margin-top: 12px;">
+               <div class="col">
+                 <div class="card pad">
+                   <div style="display:flex; align-items:center; justify-content:space-between;">
+                     <div style="font-weight:900">Käyttäjät</div>
+                     <button class="btn primary" id="userAddBtn">Luo / päivitä</button>
+                   </div>
+                   <div class="divider"></div>
+                   <div class="list" id="userList"></div>
+                 </div>
+               </div>
+               <div class="col">
+                 <div class="card pad">
+                   <div style="display:flex; align-items:center; justify-content:space-between;">
+                     <div style="font-weight:900">Hyllypaikkojen hallinta</div>
+                     <button class="btn primary" id="locAddBtn">Lisää</button>
+                   </div>
+                   <div class="divider"></div>
+                   <div class="list" id="locList"></div>
+                 </div>
+               </div>
+               <div class="col">
+                 <div class="card pad">
+                   <div style="display:flex; align-items:center; justify-content:space-between;">
+                     <div style="font-weight:900">Kalenteri</div>
+                     <button class="btn primary" id="calSettingsSave">Tallenna</button>
+                   </div>
+                   <p class="p">Slotin pituus vaikuttaa kalenterin viikkonäkymään.</p>
+                   <div class="field">
+                     <div class="label">Slotti (min)</div>
+                     <input id="calSlotMinutes" type="number" min="5" max="60" step="5" value="${escapeHtml(String(parseInt(state.data.calendarSettings?.slot_minutes, 10) || 20))}" />
+                   </div>
+                   <div class="p" style="margin:0">Auki: ${escapeHtml(String(state.data.calendarSettings?.open_time || "08:00"))}-${escapeHtml(String(state.data.calendarSettings?.close_time || "17:00"))}</div>
+                 </div>
+               </div>
+             </div>
+           ` : ``}
+         `;
 
         $("#logoutBtn", root).addEventListener("click", () => logout("Kirjautuminen päättyi."));
         $("#autoLogout", root).addEventListener("input", (e) => {
@@ -4815,6 +4838,30 @@
         $("#ownPinBtn", root).addEventListener("click", () => openOwnPinModal());
 
         if (!isAdmin) return;
+
+        const calSlotInput = $("#calSlotMinutes", root);
+        const calSaveBtn = $("#calSettingsSave", root);
+        if (calSaveBtn && calSlotInput) {
+          calSaveBtn.addEventListener("click", async () => {
+            const slot = clamp(parseInt(String(calSlotInput.value || ""), 10) || 20, 5, 60);
+            const pin = await requirePin({ title: "Vahvista", message: "Syötä admin/master PIN.", requireAdmin: true });
+            if (!pin) return;
+            const current = state.data.calendarSettings || {};
+            const out = await api.updateCalendarSettingsWithPin(state.session.hotelCode, pin, {
+              open_time: current.open_time || "08:00",
+              close_time: current.close_time || "17:00",
+              slot_minutes: String(slot),
+              showSaturday: current.showSaturday !== false,
+              showSunday: current.showSunday !== false,
+            });
+            if (out?.ok !== true) {
+              toast("error", "Virhe", out?.message || out?.reason || "Tallennus epäonnistui.");
+              return;
+            }
+            await loadCalendarWeek();
+            toast("success", "Ilmoitus", "Kalenteriasetukset tallennettu.");
+          });
+        }
 
         // Users
         const users = state.data.users || [];
