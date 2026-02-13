@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="fi">
   <head>
@@ -245,6 +246,21 @@
         const d = new Date(`${isoDate}T00:00:00Z`);
         d.setUTCDate(d.getUTCDate() + days);
         return d.toISOString().slice(0, 10);
+      }
+      function formatDateOnlyFinnish(isoDate, fallback = "—") {
+        const raw = String(isoDate || "").trim();
+        if (!raw) return fallback;
+        const d10 = raw.slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(d10)) {
+          const [y, m, d] = d10.split("-");
+          return `${d}.${m}.${y}`;
+        }
+        const d = new Date(raw);
+        if (!Number.isFinite(d.getTime())) return fallback;
+        const dd = String(d.getDate()).padStart(2, "0");
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const yy = String(d.getFullYear());
+        return `${dd}.${mm}.${yy}`;
       }
       function getMondayIso(isoDate) {
         const d = new Date(`${isoDate}T00:00:00Z`);
@@ -970,7 +986,24 @@
                 lastErr = e;
               }
             }
-            throw lastErr || new Error("Backendistä puuttuu get_calendar_week/get_calendar_week_v2.");
+            // Fallback: direct selects (works if tables exist + RLS allows anon+apikey)
+            try {
+              const startIso = `${String(weekStart || "").trim()}T00:00:00Z`;
+              const endIso = `${addDaysIso(String(weekStart || "").trim(), 7)}T00:00:00Z`;
+              const code = String(hotelCode || "").trim();
+              const [appointments, blocks] = await Promise.all([
+                request(`/appointments?hotel_code=eq.${encodeURIComponent(code)}&start_ts=gte.${encodeURIComponent(startIso)}&start_ts=lt.${encodeURIComponent(endIso)}&order=start_ts.asc&limit=5000`).catch(() => []),
+                request(`/calendar_blocks?hotel_code=eq.${encodeURIComponent(code)}&start_ts=gte.${encodeURIComponent(startIso)}&start_ts=lt.${encodeURIComponent(endIso)}&order=start_ts.asc&limit=5000`).catch(() => []),
+              ]);
+              return {
+                ok: true,
+                appointments: Array.isArray(appointments) ? appointments : [],
+                blocks: Array.isArray(blocks) ? blocks : [],
+                source: "fallback",
+              };
+            } catch (e) {
+              throw lastErr || e || new Error("Backendistä puuttuu get_calendar_week/get_calendar_week_v2.");
+            }
           },
 
           createBlockWithPin: async (hotelCode, pin, payload) => {
@@ -1148,6 +1181,7 @@
         },
         ui: {
           loading: false,
+          worklistCollapsed: {},
         },
       };
 
@@ -1631,6 +1665,10 @@
         });
         const totalPending = pendingRows.length + pendingCustomers.length;
         const canApprove = isAdminRole(state.session.role);
+        const today = todayStrLocal();
+        const pickupsToday = tires.filter((r) => !r.deleted && String(r.status || "").trim().toLowerCase() !== "luovutettu" && String(r.pickup_date || "") === today);
+        const unpaidRows = tires.filter((r) => !r.deleted && !isSeasonPaid(r.season_fee_paid) && String(r.status || "").trim().toLowerCase() !== "luovutettu");
+        const missingLocationRows = tires.filter((r) => !r.deleted && String(r.status || "").trim().toLowerCase() !== "luovutettu" && !String(r.location || "").trim());
 
         root.innerHTML = `
           <div class="card pad">
@@ -1643,6 +1681,9 @@
                 <span class="pill">Rivit: ${tires.length}</span>
                 <span class="pill">Asiakkaat: ${customers.length}</span>
                 <span class="pill">Odottaa: ${totalPending}</span>
+                <span class="pill">Noudot tänään: ${pickupsToday.length}</span>
+                <span class="pill">Maksamattomat: ${unpaidRows.length}</span>
+                <span class="pill">Puuttuu paikka: ${missingLocationRows.length}</span>
               </div>
             </div>
             <div class="btn-row" style="margin-top: 10px;">
@@ -1714,6 +1755,70 @@
               </div>
             </div>
           </div>
+
+          <div class="row" style="margin-top: 12px;">
+            <div class="col">
+              <div class="card pad">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap: 8px;">
+                  <div style="font-weight:900">Noudot tänään</div>
+                  <span class="pill">${pickupsToday.length}</span>
+                </div>
+                <div class="divider"></div>
+                <div class="list">
+                  ${pickupsToday.slice(0, 10).map((r) => {
+                    const meta = getStatusMeta(r.status, { isWaiting: r.waiting_pickup, isWorking: r.working });
+                    return `
+                      <div class="item">
+                        <div class="main">
+                          <div class="title">${escapeHtml(prettyPlate(r.plate))} · ${escapeHtml(r.customer || "—")}</div>
+                          <div class="meta">Paikka: ${escapeHtml(prettyLocation(r.location))}</div>
+                          <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                            <span class="pill" style="background:${meta.bg};border-color:${meta.border};color:${meta.color}">${escapeHtml(meta.label)}</span>
+                            <span class="pill">Nouto: ${escapeHtml(formatDateOnlyFinnish(r.pickup_date, "—"))}</span>
+                          </div>
+                        </div>
+                        <div class="actions">
+                          <button class="btn ghost" data-row-open="${escapeHtml(r.id)}">Avaa</button>
+                        </div>
+                      </div>
+                    `;
+                  }).join("")}
+                  ${pickupsToday.length === 0 ? `<div class="muted">Ei noutoja tälle päivälle.</div>` : ``}
+                </div>
+              </div>
+            </div>
+
+            <div class="col">
+              <div class="card pad">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap: 8px;">
+                  <div style="font-weight:900">Maksamattomat</div>
+                  <span class="pill">${unpaidRows.length}</span>
+                </div>
+                <div class="divider"></div>
+                <div class="list">
+                  ${unpaidRows.slice(0, 10).map((r) => {
+                    const meta = getStatusMeta(r.status, { isWaiting: r.waiting_pickup, isWorking: r.working });
+                    return `
+                      <div class="item">
+                        <div class="main">
+                          <div class="title">${escapeHtml(prettyPlate(r.plate))} · ${escapeHtml(r.customer || "—")}</div>
+                          <div class="meta">Paikka: ${escapeHtml(prettyLocation(r.location))}</div>
+                          <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                            <span class="pill" style="background:${meta.bg};border-color:${meta.border};color:${meta.color}">${escapeHtml(meta.label)}</span>
+                            <span class="pill" style="background:#fff3f4;border-color:#fbcfe8;color:#9f1239">Kausimaksu maksamatta</span>
+                          </div>
+                        </div>
+                        <div class="actions">
+                          <button class="btn ghost" data-row-open="${escapeHtml(r.id)}">Avaa</button>
+                        </div>
+                      </div>
+                    `;
+                  }).join("")}
+                  ${unpaidRows.length === 0 ? `<div class="muted">Ei maksamattomia.</div>` : ``}
+                </div>
+              </div>
+            </div>
+          </div>
         `;
 
         $("#dashNewRow", root).addEventListener("click", () => openNewRowModal());
@@ -1739,10 +1844,30 @@
             approvePendingCustomer(customer);
           });
         });
+
+        $$('[data-row-open]', root).forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-row-open");
+            const row = (state.data.tires || []).find((r) => String(r.id) === String(id));
+            if (!row) return;
+            openRowDetailsModal(row);
+          });
+        });
       }
       function renderWorklist() {
         const rows = state.data.tires || [];
         const customers = state.data.customers || [];
+        const today = todayStrLocal();
+        const pickupWindowDays = 7;
+        const pickupWindowEnd = addDaysIso(today, pickupWindowDays);
+        const pickupsToday = rows.filter((r) => !r.deleted && String(r.status || "").trim().toLowerCase() !== "luovutettu" && (r.pickup_date || "") === today);
+        const pickupsNext = rows
+          .filter((r) => {
+            if (r.deleted || String(r.status || "").trim().toLowerCase() === "luovutettu") return false;
+            const p = String(r.pickup_date || "");
+            return p > today && p <= pickupWindowEnd;
+          })
+          .sort((a, b) => String(a.pickup_date || "").localeCompare(String(b.pickup_date || "")));
         const pendingApprovalRows = rows.filter((r) => isPendingRowApproval(r));
         const activeRowCustomerKeys = new Set(rows.filter((r) => !r?.deleted).map((r) => normalizeNameKey(r?.customer)).filter(Boolean));
         const pendingCustomerApprovals = (customers || []).filter((c) => {
@@ -1751,68 +1876,162 @@
           if (!key) return true;
           return !activeRowCustomerKeys.has(key);
         });
+        const unpaidRows = rows.filter((r) => !r.deleted && !isSeasonPaid(r.season_fee_paid) && String(r.status || "").trim().toLowerCase() !== "luovutettu");
+        const missingLocationRows = rows.filter((r) => !r.deleted && String(r.status || "").trim().toLowerCase() !== "luovutettu" && !String(r.location || "").trim());
+        const missingRequiredRows = rows.filter((r) => {
+          if (r.deleted) return false;
+          const statusLower = String(r.status || "").trim().toLowerCase();
+          const locationRequired = !(statusLower === "luovutettu" || statusLower === "poistettu");
+          if (!String(r.customer || "").trim()) return true;
+          if (!String(r.phone || "").trim()) return true;
+          if (!String(r.plate || "").trim()) return true;
+          if (locationRequired && !String(r.location || "").trim()) return true;
+          return false;
+        });
+        const deliveredRows = rows
+          .filter((r) => {
+            if (r.deleted) return false;
+            const statusLower = String(r.status || "").trim().toLowerCase();
+            return statusLower === "luovutettu" || !!String(r.out_date || "").trim();
+          })
+          .sort((a, b) => String(b.out_date || "").localeCompare(String(a.out_date || "")));
+
+        const totalPending = pendingApprovalRows.length + pendingCustomerApprovals.length;
+        const groupDefaultsCollapsed = {
+          pending_rows: false,
+          pending_customers: false,
+          pickups_today: false,
+          pickups_next: true,
+          unpaid: true,
+          missing_location: true,
+          missing_required: true,
+          delivered: true,
+        };
+        const groups = [
+          { key: "pending_rows", title: "Odottaa vahvistusta (rivit)", type: "rows", data: pendingApprovalRows },
+          { key: "pending_customers", title: "Odottaa vahvistusta (asiakkaat)", type: "customers", data: pendingCustomerApprovals },
+          { key: "pickups_today", title: "Noudot tänään", type: "rows", data: pickupsToday },
+          { key: "pickups_next", title: `Noudot ${pickupWindowDays} vrk`, type: "rows", data: pickupsNext },
+          { key: "unpaid", title: "Maksamattomat", type: "rows", data: unpaidRows },
+          { key: "missing_location", title: "Puuttuu hyllypaikka", type: "rows", data: missingLocationRows },
+          { key: "missing_required", title: "Puuttuu pakolliset tiedot", type: "rows", data: missingRequiredRows },
+          { key: "delivered", title: "Luovutettu", type: "rows", data: deliveredRows },
+        ];
+
+        const renderRowCard = (r, opts = {}) => {
+          const statusLower = String(r.status || "").trim().toLowerCase();
+          const isWaiting = r.waiting_pickup || statusLower === "odottaa noutoa";
+          const isWorking = r.working || statusLower === "työn alla";
+          const meta = getStatusMeta(r.status, { isWaiting, isWorking });
+          const paid = isSeasonPaid(r.season_fee_paid);
+          const locationLabel = prettyLocation(r.location);
+          const pickupLabel = r.pickup_date ? formatDateOnlyFinnish(r.pickup_date, "") : "";
+          const deliveredLabel = r.out_date ? formatDateOnlyFinnish(r.out_date, "") : "";
+          const showPickup = statusLower === "luovutettu" || !!pickupLabel;
+          const pickupText = statusLower === "luovutettu" ? (deliveredLabel ? `Luovutettu: ${deliveredLabel}` : "Luovutettu") : `Nouto: ${pickupLabel}`;
+          const inLabel = r.in_date ? formatDateOnlyFinnish(r.in_date, "—") : "—";
+          return `
+            <div class="item">
+              <div class="main">
+                <div class="title">${escapeHtml(prettyPlate(r.plate))} · ${escapeHtml(r.customer || "—")}</div>
+                <div class="meta">Paikka: ${escapeHtml(locationLabel)}</div>
+                <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                  <span class="pill" style="background:${meta.bg};border-color:${meta.border};color:${meta.color}">${escapeHtml(meta.label)}</span>
+                  <span class="pill" style="background:${paid ? "#eaf7ef" : "#fff3f4"};border-color:${paid ? "#c8e6d3" : "#f3cdd2"};color:${paid ? "#1f6f4a" : "#9f1239"}">${paid ? "Kausimaksu maksettu" : "Kausimaksu maksamatta"}</span>
+                  ${showPickup ? `<span class="pill">${escapeHtml(pickupText)}</span>` : ``}
+                  <span class="pill">Sisään: ${escapeHtml(inLabel)}</span>
+                  ${opts?.pending ? `<span class="pill">Odottaa admin-hyväksyntää</span>` : ``}
+                  ${opts?.missingRequired ? `<span class="pill" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412">Täydennä tiedot</span>` : ``}
+                </div>
+              </div>
+              <div class="actions">
+                ${opts?.approveBtn || ""}
+                <button class="btn ghost" data-row-open="${escapeHtml(r.id)}">Avaa</button>
+              </div>
+            </div>
+          `;
+        };
+
+        const renderCustomerCard = (c) => {
+          const name = c.nimi || c.customer || "—";
+          const phone = c.puhelin || c.phone || "";
+          const email = c.sahkoposti || c.email || "";
+          return `
+            <div class="item">
+              <div class="main">
+                <div class="title">${escapeHtml(name)}</div>
+                <div class="meta">${escapeHtml(phone)} ${email ? "· " + escapeHtml(email) : ""}</div>
+                <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                  <span class="pill">Odotottaa admin-hyväksyntää</span>
+                </div>
+              </div>
+              <div class="actions">
+                ${isAdminRole(state.session.role) ? `<button class="btn primary" data-approve-customer="${escapeHtml(c.id)}">Hyväksy</button>` : ``}
+              </div>
+            </div>
+          `;
+        };
 
         root.innerHTML = `
           <div class="card pad">
             <div style="display:flex; align-items:flex-start; justify-content:space-between; gap: 10px;">
               <div>
                 <h1 class="h1">Työlista</h1>
-                <p class="p">Näytetään erityisesti odottavat vahvistukset.</p>
+                <p class="p">Tärkeimmät: noudot, maksut, puuttuvat tiedot ja vahvistukset.</p>
               </div>
               <span class="pill">Rivit: ${rows.length}</span>
+            </div>
+            <div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">
+              <span class="pill">Noudot tänään: ${pickupsToday.length}</span>
+              <span class="pill">Noudot ${pickupWindowDays} vrk: ${pickupsNext.length}</span>
+              <span class="pill" style="background:#fff3f4;border-color:#fbcfe8;color:#9f1239">Maksamattomat: ${unpaidRows.length}</span>
+              <span class="pill">Puuttuu paikka: ${missingLocationRows.length}</span>
+              <span class="pill" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412">Vahvistukset: ${totalPending}</span>
             </div>
             <div class="btn-row" style="margin-top: 10px;">
               <button class="btn ghost" id="wlRefresh">Päivitä</button>
             </div>
           </div>
 
-          <div class="card pad" style="margin-top: 12px;">
-            <div style="display:flex; align-items:center; justify-content:space-between;">
-              <div style="font-weight:900">Odottaa vahvistusta</div>
-              <span class="pill">${pendingApprovalRows.length + pendingCustomerApprovals.length}</span>
-            </div>
-            <div class="divider"></div>
-            <div class="list">
-              ${pendingApprovalRows.map((r) => {
-                const meta = getStatusMeta(r.status, { isWaiting: r.waiting_pickup, isWorking: r.working });
-                return `
-                  <div class="item">
-                    <div class="main">
-                      <div class="title">${escapeHtml(r.customer || "—")} · <span style="font-family:var(--mono)">${escapeHtml(prettyPlate(r.plate))}</span></div>
-                      <div class="meta">Paikka: ${escapeHtml(prettyLocation(r.location))} · Luonut: ${escapeHtml(formatActor(r.created_by_name, r.created_by_role))}</div>
-                      <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
-                        <span class="pill" style="background:${meta.bg};border-color:${meta.border};color:${meta.color}">${escapeHtml(meta.label)}</span>
-                        <span class="pill">Odottaa admin-hyväksyntää</span>
-                      </div>
-                    </div>
-                    <div class="actions">
-                      ${isAdminRole(state.session.role) ? `<button class="btn primary" data-approve-row="${escapeHtml(r.id)}">Hyväksy</button>` : `<span class="pill">Ei oikeuksia</span>`}
-                    </div>
+          ${groups.map((g) => {
+            const collapsed = state.ui.worklistCollapsed[g.key] === undefined ? !!groupDefaultsCollapsed[g.key] : !!state.ui.worklistCollapsed[g.key];
+            const arrow = collapsed ? "▾" : "▴";
+            return `
+              <div class="card pad" style="margin-top: 12px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px; cursor:pointer;" data-wl-toggle="${escapeHtml(g.key)}">
+                  <div style="font-weight:900">${arrow} ${escapeHtml(g.title)}</div>
+                  <span class="pill">${g.data.length}</span>
+                </div>
+                ${collapsed ? `` : `
+                  <div class="divider"></div>
+                  <div class="list">
+                    ${g.data.length === 0 ? `<div class="muted">Ei rivejä.</div>` : ``}
+                    ${g.type === "customers" ? g.data.map((c) => renderCustomerCard(c)).join("") : g.data.map((r) => {
+                      if (g.key === "pending_rows") {
+                        const approveBtn = isAdminRole(state.session.role) ? `<button class="btn primary" data-approve-row="${escapeHtml(r.id)}">Hyväksy</button>` : ``;
+                        return renderRowCard(r, { pending: true, approveBtn });
+                      }
+                      if (g.key === "missing_required") return renderRowCard(r, { missingRequired: true });
+                      return renderRowCard(r, {});
+                    }).join("")}
                   </div>
-                `;
-              }).join("")}
-
-              ${pendingCustomerApprovals.map((c) => {
-                const name = c.nimi || c.customer || "—";
-                return `
-                  <div class="item">
-                    <div class="main">
-                      <div class="title">${escapeHtml(name)}</div>
-                      <div class="meta">Odottaa admin-hyväksyntää</div>
-                    </div>
-                    <div class="actions">
-                      ${isAdminRole(state.session.role) ? `<button class="btn primary" data-approve-customer="${escapeHtml(c.id)}">Hyväksy</button>` : `<span class="pill">Ei oikeuksia</span>`}
-                    </div>
-                  </div>
-                `;
-              }).join("")}
-
-              ${(pendingApprovalRows.length + pendingCustomerApprovals.length) === 0 ? `<div class="muted">Ei odottavia vahvistuksia.</div>` : ``}
-            </div>
-          </div>
+                `}
+              </div>
+            `;
+          }).join("")}
         `;
 
         $("#wlRefresh", root).addEventListener("click", () => ensureLoaded());
+
+        $$("[data-wl-toggle]", root).forEach((el) => {
+          el.addEventListener("click", () => {
+            const key = el.getAttribute("data-wl-toggle");
+            if (!key) return;
+            const curr = state.ui.worklistCollapsed[key] === undefined ? !!groupDefaultsCollapsed[key] : !!state.ui.worklistCollapsed[key];
+            state.ui.worklistCollapsed[key] = !curr;
+            render();
+          });
+        });
 
         $$('[data-approve-row]', root).forEach((btn) => {
           btn.addEventListener('click', () => {
@@ -1832,6 +2051,14 @@
             const customer = (state.data.customers || []).find((c) => String(c.id) === String(id));
             if (!customer) return;
             approvePendingCustomer(customer);
+          });
+        });
+        $$('[data-row-open]', root).forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-row-open');
+            const row = (state.data.tires || []).find((r) => String(r.id) === String(id));
+            if (!row) return;
+            openRowDetailsModal(row);
           });
         });
       }
@@ -1875,57 +2102,145 @@
             return name.includes(q) || phone.includes(q) || email.includes(q);
           });
 
-          list.innerHTML = (filtered.map((c) => {
-            const name = c.nimi || c.customer || "—";
-            const phone = c.puhelin || c.phone || "";
-            const email = c.sahkoposti || c.email || "";
-            const pending = isPendingCustomerApproval(c);
-            return `
-              <div class="item">
-                <div class="main">
-                  <div class="title">${escapeHtml(name)}</div>
-                  <div class="meta">${escapeHtml(phone)} ${email ? "· " + escapeHtml(email) : ""}</div>
-                  <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
-                    ${pending ? `<span class="pill">Odottaa admin-hyväksyntää</span>` : ``}
-                    <span class="pill">Luonut: ${escapeHtml(formatActor(c.created_by_name || c.luonut_nimi, c.created_by_role || c.luonut_rooli))}</span>
-                    <span class="pill">Päivitetty: ${escapeHtml(formatActor(c.updated_by_name || c.paivittanyt_nimi, c.updated_by_role || c.paivittanyt_rooli))}</span>
-                  </div>
-                </div>
-                <div class="actions">
-                  ${isAdminRole(state.session.role) ? `<button class="btn danger" data-cust-soft="${escapeHtml(c.id)}">Poista</button>` : ``}
-                  ${isAdminRole(state.session.role) ? `<button class="btn danger" data-cust-hard="${escapeHtml(c.id)}">Poista pysyvästi</button>` : ``}
-                </div>
-              </div>
-            `;
-          }).join("")) || `<div class="muted">Ei asiakkaita.</div>`;
+           list.innerHTML = (filtered.map((c) => {
+             const name = c.nimi || c.customer || "—";
+             const phone = c.puhelin || c.phone || "";
+             const email = c.sahkoposti || c.email || "";
+             const pending = isPendingCustomerApproval(c);
+             return `
+               <div class="item">
+                 <div class="main">
+                   <div class="title">${escapeHtml(name)}</div>
+                   <div class="meta">${escapeHtml(phone)} ${email ? "· " + escapeHtml(email) : ""}</div>
+                   <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                     ${pending ? `<span class="pill">Odottaa admin-hyväksyntää</span>` : ``}
+                     <span class="pill">Luonut: ${escapeHtml(formatActor(c.created_by_name || c.luonut_nimi, c.created_by_role || c.luonut_rooli))}</span>
+                     <span class="pill">Päivitetty: ${escapeHtml(formatActor(c.updated_by_name || c.paivittanyt_nimi, c.updated_by_role || c.paivittanyt_rooli))}</span>
+                   </div>
+                 </div>
+                 <div class="actions">
+                   <button class="btn ghost" data-cust-open="${escapeHtml(c.id)}">Avaa</button>
+                   ${isAdminRole(state.session.role) ? `
+                     <div class="menu" data-cust-menu="${escapeHtml(c.id)}">
+                       <button class="btn danger" data-cust-menu-btn="${escapeHtml(c.id)}">Poista</button>
+                       <div class="menu-pop" data-cust-menu-pop="${escapeHtml(c.id)}">
+                         <button class="danger" data-cust-soft="${escapeHtml(c.id)}">Poista</button>
+                         <button class="danger" data-cust-hard="${escapeHtml(c.id)}">Poista pysyvästi</button>
+                       </div>
+                     </div>
+                   ` : ``}
+                 </div>
+               </div>
+             `;
+           }).join("")) || `<div class="muted">Ei asiakkaita.</div>`;
 
-          $$('[data-cust-soft]', list).forEach((btn) => {
-            btn.addEventListener('click', () => {
-              const id = btn.getAttribute('data-cust-soft');
-              const c = customers.find((x) => String(x.id) === String(id));
-              if (!c) return;
-              modalConfirm("Poista asiakas", "Poistetaan asiakas ja renkaat (soft).", [
-                { text: "Peruuta", kind: "ghost" },
-                { text: "Poista", kind: "danger", onPress: () => softDeleteCustomer(c) },
-              ]);
-            });
-          });
-          $$('[data-cust-hard]', list).forEach((btn) => {
-            btn.addEventListener('click', () => {
-              const id = btn.getAttribute('data-cust-hard');
-              const c = customers.find((x) => String(x.id) === String(id));
-              if (!c) return;
-              modalConfirm("Poista asiakas pysyvästi", "Poistetaan asiakas ja renkaat tietokannasta (HARD).", [
-                { text: "Peruuta", kind: "ghost" },
-                { text: "Poista pysyvästi", kind: "danger", onPress: () => hardDeleteCustomer(c) },
-              ]);
-            });
-          });
-        };
+           $$('[data-cust-open]', list).forEach((btn) => {
+             btn.addEventListener('click', () => {
+               const id = btn.getAttribute('data-cust-open');
+               const c = customers.find((x) => String(x.id) === String(id));
+               if (!c) return;
+               openCustomerDetailsModal(c);
+             });
+           });
+
+           $$('[data-cust-menu-btn]', list).forEach((btn) => {
+             btn.addEventListener('click', () => {
+               const id = btn.getAttribute('data-cust-menu-btn');
+               const pop = $(`[data-cust-menu-pop="${CSS.escape(id)}"]`, list);
+               if (!pop) return;
+               pop.classList.toggle("open");
+             });
+           });
+
+           $$('[data-cust-soft]', list).forEach((btn) => {
+             btn.addEventListener('click', () => {
+               const id = btn.getAttribute('data-cust-soft');
+               const c = customers.find((x) => String(x.id) === String(id));
+               if (!c) return;
+               modalConfirm("Poista asiakas", "Poistetaan asiakas ja renkaat (soft).", [
+                 { text: "Peruuta", kind: "ghost" },
+                 { text: "Poista", kind: "danger", onPress: () => softDeleteCustomer(c) },
+               ]);
+             });
+           });
+           $$('[data-cust-hard]', list).forEach((btn) => {
+             btn.addEventListener('click', () => {
+               const id = btn.getAttribute('data-cust-hard');
+               const c = customers.find((x) => String(x.id) === String(id));
+               if (!c) return;
+               modalConfirm("Poista asiakas pysyvästi", "Poistetaan asiakas ja renkaat tietokannasta (HARD).", [
+                 { text: "Peruuta", kind: "ghost" },
+                 { text: "Poista pysyvästi", kind: "danger", onPress: () => hardDeleteCustomer(c) },
+               ]);
+             });
+           });
+         };
 
         search.addEventListener("input", renderList);
         renderList();
       }
+
+      function openCustomerDetailsModal(customer) {
+        const isAdmin = isAdminRole(state.session.role);
+        const name = String(customer?.nimi || customer?.customer || "").trim();
+        const phone = String(customer?.puhelin || customer?.phone || "").trim();
+        const email = String(customer?.sahkoposti || customer?.email || "").trim();
+        const creator = formatActor(customer?.created_by_name || customer?.luonut_nimi, customer?.created_by_role || customer?.luonut_rooli);
+        const editor = formatActor(customer?.updated_by_name || customer?.paivittanyt_nimi, customer?.updated_by_role || customer?.paivittanyt_rooli);
+
+        const html = `
+          <div class="msg">${isAdmin ? "Admin voi muokata asiakkaan tietoja. Huom: renkaiden asiakasnimi ei päivity automaattisesti." : "Staff: vain katselu."}</div>
+          <div class="field">
+            <div class="label">Nimi <span class="req">*</span></div>
+            <input id="cdName" value="${escapeHtml(name)}" ${isAdmin ? "" : "readonly"} />
+          </div>
+          <div class="field">
+            <div class="label">Puhelin <span class="req">*</span></div>
+            <input id="cdPhone" value="${escapeHtml(phone)}" ${isAdmin ? "" : "readonly"} />
+          </div>
+          <div class="field">
+            <div class="label">Sähköposti</div>
+            <input id="cdEmail" value="${escapeHtml(email)}" ${isAdmin ? "" : "readonly"} />
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <span class="pill">Luonut: ${escapeHtml(creator)}</span>
+            <span class="pill">Päivitetty: ${escapeHtml(editor)}</span>
+          </div>
+          <div class="btn-row" style="justify-content:flex-end; margin-top: 12px;">
+            <button class="btn ghost" id="cdClose" type="button">Sulje</button>
+            ${isAdmin ? `<button class="btn primary" id="cdSave" type="button">Tallenna</button>` : ``}
+          </div>
+        `;
+        openModal("Asiakas", html);
+
+        $("#cdClose", modalBody).addEventListener("click", closeModal);
+        const save = $("#cdSave", modalBody);
+        if (!save) return;
+        save.addEventListener("click", async () => {
+          const nextName = String($("#cdName", modalBody).value || "").trim();
+          const nextPhone = String($("#cdPhone", modalBody).value || "").trim();
+          const nextEmail = String($("#cdEmail", modalBody).value || "").trim();
+          if (!nextName || !nextPhone) {
+            toast("error", "Virhe", "Täytä pakolliset kentät: Nimi ja puhelin.");
+            return;
+          }
+          const patch = {};
+          if (nextName !== name) patch.nimi = nextName;
+          if (nextPhone !== phone) patch.puhelin = nextPhone;
+          if (nextEmail !== email) patch.sahkoposti = nextEmail || null;
+          closeModal();
+          try {
+            if (Object.keys(patch).length) {
+              await api.updateCustomer(customer.id, patch);
+              await loadCustomers();
+              toast("success", "Ilmoitus", "Tallennettu.");
+            }
+          } catch (e) {
+            toast("error", "Virhe", e?.message || "Tallennus epäonnistui.");
+          }
+        });
+      }
+
       function openNewRowModal() {
         const canManageSeasonFee = isAdminRole(state.session.role);
         const html = `
@@ -1948,23 +2263,22 @@
             <input id="nrPlate" />
             <div class="p danger-text" id="nrDup" style="display:none;margin:0"></div>
           </div>
-          <div class="field">
-            <div class="label">Hyllypaikka <span class="req">*</span></div>
-            <input id="nrLoc" placeholder="esim. H01-A-01" />
-          </div>
-          <div class="field">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
-              <div class="label">Vapaat hyllypaikat</div>
-              <button class="btn ghost" id="nrFreeRefresh" type="button">Päivitä</button>
-            </div>
-            <select id="nrFreeSelect">
-              <option value="">Haetaan...</option>
-            </select>
-            <div class="p" id="nrFreeMeta" style="margin:0"></div>
-          </div>
-          <div class="field">
-            <div class="label">Huomiot</div>
-            <textarea id="nrNotes"></textarea>
+           <div class="field">
+             <div class="label">Hyllypaikka <span class="req">*</span></div>
+             <input id="nrLoc" placeholder="esim. H01-A-01" />
+           </div>
+           <div class="field">
+             <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
+               <div class="label">Vapaat hyllypaikat</div>
+               <button class="btn ghost" id="nrFreeRefresh" type="button">Päivitä</button>
+             </div>
+             <input id="nrFreeSearch" placeholder="Hae vapaa paikka (esim. 1A1)" />
+             <div class="list" id="nrFreeList" style="margin-top:8px; max-height: 220px; overflow:auto;"></div>
+             <div class="p" id="nrFreeMeta" style="margin:0"></div>
+           </div>
+           <div class="field">
+             <div class="label">Huomiot</div>
+             <textarea id="nrNotes"></textarea>
           </div>
           <div class="field" ${canManageSeasonFee ? "" : "style='opacity:0.6'"}>
             <div class="label">Kausimaksu</div>
@@ -1982,13 +2296,14 @@
         openModal("Uusi rivi", html);
 
         const nameEl = $("#nrName", modalBody);
-        const phoneEl = $("#nrPhone", modalBody);
-        const emailEl = $("#nrEmail", modalBody);
-        const locEl = $("#nrLoc", modalBody);
-        const custHint = $("#nrCustHint", modalBody);
-        const freeSelect = $("#nrFreeSelect", modalBody);
-        const freeMeta = $("#nrFreeMeta", modalBody);
-        const freeRefreshBtn = $("#nrFreeRefresh", modalBody);
+         const phoneEl = $("#nrPhone", modalBody);
+         const emailEl = $("#nrEmail", modalBody);
+         const locEl = $("#nrLoc", modalBody);
+         const custHint = $("#nrCustHint", modalBody);
+         const freeSearch = $("#nrFreeSearch", modalBody);
+         const freeList = $("#nrFreeList", modalBody);
+         const freeMeta = $("#nrFreeMeta", modalBody);
+         const freeRefreshBtn = $("#nrFreeRefresh", modalBody);
 
         const plate = $("#nrPlate", modalBody);
         const dup = $("#nrDup", modalBody);
@@ -1996,45 +2311,70 @@
         let custTimer = null;
         let lastCustomerKey = "";
 
-        async function refreshFreeLocations() {
-          freeRefreshBtn.disabled = true;
-          freeSelect.innerHTML = `<option value=\"\">Haetaan...</option>`;
-          freeMeta.textContent = "";
-          try {
-            const rows = await api.listFreeLocations(state.session.hotelCode);
-            const items = Array.isArray(rows) ? rows : [];
-            const opts = [`<option value=\"\">Valitse vapaa paikka</option>`].concat(
-              items.map((r) => {
-                const code = String(r?.code || r?.hyllypaikka || r?.location || "").trim();
-                const label = String(r?.label || r?.nimi || r?.name || code).trim() || code || "—";
-                if (!code) return "";
-                return `<option value=\"${escapeHtml(code)}\">${escapeHtml(label)}</option>`;
-              }).filter(Boolean)
-            );
-            freeSelect.innerHTML = opts.join("");
-            freeMeta.textContent = items.length ? `${items.length} vapaata` : "Ei vapaita paikkoja";
+         let freeItems = [];
+         function renderFreeLocationsList() {
+           const q = String(freeSearch.value || "").trim().toLowerCase();
+           const filtered = !q ? freeItems : freeItems.filter((r) => {
+             const code = String(r?.code || r?.hyllypaikka || r?.location || "").trim();
+             const label = String(r?.label || r?.nimi || r?.name || code).trim();
+             const hay = `${code} ${label}`.toLowerCase();
+             return hay.includes(q);
+           });
+           const max = 18;
+           const visible = filtered.slice(0, max);
+           freeList.innerHTML = visible.length
+             ? visible.map((r) => {
+               const code = String(r?.code || r?.hyllypaikka || r?.location || "").trim();
+               const label = String(r?.label || r?.nimi || r?.name || code).trim() || code || "—";
+               if (!code) return "";
+               return `
+                 <div class="item" style="cursor:pointer" data-free-loc="${escapeHtml(code)}">
+                   <div class="main">
+                     <div class="title">${escapeHtml(label)}</div>
+                     <div class="meta">${escapeHtml(code)}</div>
+                   </div>
+                   <div class="actions"><span class="pill">Valitse</span></div>
+                 </div>
+               `;
+             }).join("")
+             : `<div class="muted">Ei osumia.</div>`;
+           $$("[data-free-loc]", freeList).forEach((el) => {
+             el.addEventListener("click", () => {
+               const code = el.getAttribute("data-free-loc");
+               if (code) locEl.value = code;
+             });
+           });
+         }
 
-            const firstCode = items
-              .map((r) => String(r?.code || r?.hyllypaikka || r?.location || "").trim())
-              .find((v) => !!v);
-            if (!String(locEl.value || "").trim() && firstCode) {
-              // täytä ensimmäinen ehdotus automaattisesti, jos kenttä tyhjä
-              locEl.value = firstCode;
-            }
-          } catch (e) {
-            freeSelect.innerHTML = `<option value=\"\">(Haku epäonnistui)</option>`;
-            freeMeta.textContent = e?.message ? String(e.message) : "Haku epäonnistui";
-          } finally {
-            freeRefreshBtn.disabled = false;
-          }
-        }
+         async function refreshFreeLocations() {
+           freeRefreshBtn.disabled = true;
+           freeList.innerHTML = `<div class="muted">Haetaan...</div>`;
+           freeMeta.textContent = "";
+           try {
+             const rows = await api.listFreeLocations(state.session.hotelCode);
+             const items = Array.isArray(rows) ? rows : [];
+             freeItems = items;
+             freeMeta.textContent = items.length ? `${items.length} vapaata` : "Ei vapaita paikkoja";
+             renderFreeLocationsList();
 
-        freeRefreshBtn.addEventListener("click", () => refreshFreeLocations());
-        freeSelect.addEventListener("change", () => {
-          const v = String(freeSelect.value || "").trim();
-          if (v) locEl.value = v;
-        });
-        refreshFreeLocations();
+             const firstCode = items
+               .map((r) => String(r?.code || r?.hyllypaikka || r?.location || "").trim())
+               .find((v) => !!v);
+             if (!String(locEl.value || "").trim() && firstCode) {
+               // täytä ensimmäinen ehdotus automaattisesti, jos kenttä tyhjä
+               locEl.value = firstCode;
+             }
+           } catch (e) {
+             freeList.innerHTML = `<div class="muted">(Haku epäonnistui)</div>`;
+             freeMeta.textContent = e?.message ? String(e.message) : "Haku epäonnistui";
+           } finally {
+             freeRefreshBtn.disabled = false;
+           }
+         }
+
+         freeRefreshBtn.addEventListener("click", () => refreshFreeLocations());
+         freeSearch.addEventListener("input", () => renderFreeLocationsList());
+         refreshFreeLocations();
 
         function renderCustomerHint(customerRow) {
           if (!customerRow) {
@@ -2132,6 +2472,244 @@
         setTimeout(() => nameEl.focus(), 0);
       }
 
+      function openRowEditModal(row) {
+        if (!row) return;
+        const isAdmin = isAdminRole(state.session.role);
+        if (!isAdmin) return toast("error", "Virhe", "Ei oikeuksia.");
+
+        const statusRaw = String(row.status || "Varastossa").trim() || "Varastossa";
+        const statusLower = statusRaw.toLowerCase();
+        const locationRequired = !(statusLower === "luovutettu" || statusLower === "poistettu");
+
+        const html = `
+          <div class="msg">Muokkaa rivin tietoja. Pakolliset: nimi, puhelin, rekisteri${locationRequired ? ", hyllypaikka" : ""}.</div>
+          <div class="row">
+            <div class="col" style="min-width:240px">
+              <div class="field" style="margin-top:10px">
+                <div class="label">Asiakas <span class="req">*</span></div>
+                <input id="reName" value="${escapeHtml(String(row.customer || ""))}" />
+              </div>
+            </div>
+            <div class="col" style="min-width:240px">
+              <div class="field" style="margin-top:10px">
+                <div class="label">Puhelin <span class="req">*</span></div>
+                <input id="rePhone" value="${escapeHtml(String(row.phone || ""))}" />
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col" style="min-width:240px">
+              <div class="field" style="margin-top:10px">
+                <div class="label">Rekisteri <span class="req">*</span></div>
+                <input id="rePlate" value="${escapeHtml(String(row.plate || ""))}" />
+                <div class="p danger-text" id="reDup" style="display:none;margin:0"></div>
+              </div>
+            </div>
+            <div class="col" style="min-width:240px">
+              <div class="field" style="margin-top:10px">
+                <div class="label">Hyllypaikka ${locationRequired ? `<span class="req">*</span>` : ""}</div>
+                <input id="reLoc" value="${escapeHtml(String(row.location || ""))}" placeholder="esim. H01-A-01" />
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
+              <div class="label">Vapaat hyllypaikat</div>
+              <button class="btn ghost" id="reFreeRefresh" type="button">Päivitä</button>
+            </div>
+            <input id="reFreeSearch" placeholder="Hae vapaa paikka (esim. 1A1)" />
+            <div class="list" id="reFreeList" style="margin-top:8px; max-height: 220px; overflow:auto;"></div>
+            <div class="p" id="reFreeMeta" style="margin:0"></div>
+          </div>
+
+          <div class="row">
+            <div class="col" style="min-width:220px">
+              <div class="field" style="margin-top:10px">
+                <div class="label">Tila</div>
+                <select id="reStatus">
+                  ${["Varastossa", "Työn alla", "Odottaa noutoa", "Luovutettu"].map((s) => `<option value="${escapeHtml(s)}" ${String(s).toLowerCase() === statusLower ? "selected" : ""}>${escapeHtml(s)}</option>`).join("")}
+                </select>
+              </div>
+            </div>
+            <div class="col" style="min-width:220px">
+              <div class="field" style="margin-top:10px">
+                <div class="label">Noutopäivä</div>
+                <input id="rePickup" type="date" value="${escapeHtml(String(row.pickup_date || ""))}" />
+              </div>
+            </div>
+            <div class="col" style="min-width:220px">
+              <div class="field" style="margin-top:10px">
+                <div class="label">Kausimaksu</div>
+                <select id="reSeason">
+                  <option value="false" ${isSeasonPaid(row.season_fee_paid) ? "" : "selected"}>Maksamaton</option>
+                  <option value="true" ${isSeasonPaid(row.season_fee_paid) ? "selected" : ""}>Maksettu</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="label">Huomiot</div>
+            <textarea id="reNotes">${escapeHtml(String(row.notes || ""))}</textarea>
+          </div>
+
+          <div class="btn-row" style="justify-content:flex-end;">
+            <button class="btn ghost" id="reCancel" type="button">Peruuta</button>
+            <button class="btn primary" id="reSave" type="button">Tallenna</button>
+          </div>
+        `;
+        openModal("Muokkaa riviä", html);
+
+        const nameEl = $("#reName", modalBody);
+        const phoneEl = $("#rePhone", modalBody);
+        const plateEl = $("#rePlate", modalBody);
+        const locEl = $("#reLoc", modalBody);
+        const dup = $("#reDup", modalBody);
+        const freeRefreshBtn = $("#reFreeRefresh", modalBody);
+        const freeSearch = $("#reFreeSearch", modalBody);
+        const freeList = $("#reFreeList", modalBody);
+        const freeMeta = $("#reFreeMeta", modalBody);
+        let freeItems = [];
+        let dupTimer = null;
+
+        function renderFreeLocationsList() {
+          const q = String(freeSearch.value || "").trim().toLowerCase();
+          const filtered = !q ? freeItems : freeItems.filter((r) => {
+            const code = String(r?.code || r?.hyllypaikka || r?.location || "").trim();
+            const label = String(r?.label || r?.nimi || r?.name || code).trim();
+            const hay = `${code} ${label}`.toLowerCase();
+            return hay.includes(q);
+          });
+          const max = 18;
+          const visible = filtered.slice(0, max);
+          freeList.innerHTML = visible.length
+            ? visible.map((r) => {
+              const code = String(r?.code || r?.hyllypaikka || r?.location || "").trim();
+              const label = String(r?.label || r?.nimi || r?.name || code).trim() || code || "—";
+              if (!code) return "";
+              return `
+                <div class="item" style="cursor:pointer" data-free-loc="${escapeHtml(code)}">
+                  <div class="main">
+                    <div class="title">${escapeHtml(label)}</div>
+                    <div class="meta">${escapeHtml(code)}</div>
+                  </div>
+                  <div class="actions"><span class="pill">Valitse</span></div>
+                </div>
+              `;
+            }).join("")
+            : `<div class="muted">Ei osumia.</div>`;
+          $$("[data-free-loc]", freeList).forEach((el) => {
+            el.addEventListener("click", () => {
+              const code = el.getAttribute("data-free-loc");
+              if (code) locEl.value = code;
+            });
+          });
+        }
+
+        async function refreshFreeLocations() {
+          freeRefreshBtn.disabled = true;
+          freeList.innerHTML = `<div class="muted">Haetaan...</div>`;
+          freeMeta.textContent = "";
+          try {
+            const rows = await api.listFreeLocations(state.session.hotelCode);
+            const items = Array.isArray(rows) ? rows : [];
+            freeItems = items;
+            freeMeta.textContent = items.length ? `${items.length} vapaata` : "Ei vapaita paikkoja";
+            renderFreeLocationsList();
+          } catch (e) {
+            freeList.innerHTML = `<div class="muted">(Haku epäonnistui)</div>`;
+            freeMeta.textContent = e?.message ? String(e.message) : "Haku epäonnistui";
+          } finally {
+            freeRefreshBtn.disabled = false;
+          }
+        }
+
+        freeRefreshBtn.addEventListener("click", () => refreshFreeLocations());
+        freeSearch.addEventListener("input", () => renderFreeLocationsList());
+        refreshFreeLocations();
+
+        plateEl.addEventListener("input", () => {
+          const v = String(plateEl.value || "").trim();
+          clearTimeout(dupTimer);
+          if (!v) {
+            dup.style.display = "none";
+            dup.textContent = "";
+            return;
+          }
+          dupTimer = setTimeout(async () => {
+            try {
+              const found = await api.findActiveTireByPlate(state.session.hotelCode, v, row.id);
+              if (found) {
+                dup.textContent = formatPlateDuplicateMessage(v, found);
+                dup.style.display = "";
+              } else {
+                dup.style.display = "none";
+                dup.textContent = "";
+              }
+            } catch {
+              // ignore
+            }
+          }, 350);
+        });
+
+        $("#reCancel", modalBody).addEventListener("click", closeModal);
+        $("#reSave", modalBody).addEventListener("click", async () => {
+          const next = {
+            customer: String(nameEl.value || "").trim(),
+            phone: String(phoneEl.value || "").trim(),
+            plate: String(plateEl.value || "").trim(),
+            location: String(locEl.value || "").trim() || null,
+            status: String($("#reStatus", modalBody).value || "").trim() || "Varastossa",
+            pickup_date: String($("#rePickup", modalBody).value || "").trim() || null,
+            season_fee_paid: $("#reSeason", modalBody).value === "true",
+            notes: String($("#reNotes", modalBody).value || "").trim() || null,
+          };
+          const nextStatusLower = next.status.toLowerCase();
+          const nextLocationRequired = !(nextStatusLower === "luovutettu" || nextStatusLower === "poistettu");
+          if (!next.customer || !next.phone || !next.plate || (nextLocationRequired && !String(next.location || "").trim())) {
+            toast("error", "Virhe", "Täytä pakolliset kentät.");
+            return;
+          }
+
+          const patch = {};
+          if (next.customer !== String(row.customer || "").trim()) patch.customer = next.customer;
+          if (next.phone !== String(row.phone || "").trim()) patch.phone = next.phone;
+          if (normalizePlate(next.plate) !== normalizePlate(row.plate)) patch.plate = next.plate;
+          if (String(next.location || "") !== String(row.location || "")) patch.location = next.location;
+          if (String(next.pickup_date || "") !== String(row.pickup_date || "")) patch.pickup_date = next.pickup_date;
+          if (!!next.season_fee_paid !== isSeasonPaid(row.season_fee_paid)) patch.season_fee_paid = next.season_fee_paid;
+          if (String(next.notes || "") !== String(row.notes || "")) patch.notes = next.notes;
+          if (String(next.status || "") !== String(row.status || "")) {
+            patch.status = next.status;
+            patch.waiting_pickup = nextStatusLower === "odottaa noutoa";
+            patch.working = nextStatusLower === "työn alla";
+          }
+
+          // Mark delivered: set out_date + free shelf
+          if (nextStatusLower === "luovutettu" && !String(row.out_date || "").trim()) {
+            patch.out_date = todayStrLocal();
+            patch.last_location = row.location || row.last_location || null;
+            patch.location = null;
+            patch.waiting_pickup = false;
+            patch.working = false;
+          }
+
+          if (Object.keys(patch).length === 0) {
+            closeModal();
+            return;
+          }
+          closeModal();
+          try {
+            await api.updateTire(row.id, row.rev, patch);
+            await loadTires();
+            toast("success", "Ilmoitus", "Tallennettu.");
+          } catch (e) {
+            toast("error", "Virhe", e?.message || "Tallennus epäonnistui.");
+          }
+        });
+      }
+
       function openRowDetailsModal(row) {
         const isAdmin = isAdminRole(state.session.role);
         const meta = getStatusMeta(row.status, { isWaiting: row.waiting_pickup, isWorking: row.working });
@@ -2139,6 +2717,9 @@
           ? { t: "Maksettu", bg: "#eef4ff", border: "#c7d2fe", color: "#1e429f" }
           : { t: "Maksamaton", bg: "#fff7ed", border: "#fed7aa", color: "#9a3412" };
         const pending = isPendingRowApproval(row);
+        const deliveredAt = row?.out_date ? formatDateOnlyFinnish(row.out_date, "") : "";
+        const deliveredBy = formatActor(row?.delivered_by_name ?? row?.updated_by_name, row?.delivered_by_role ?? row?.updated_by_role);
+        const deliveredInfo = deliveredAt ? (deliveredBy && deliveredBy !== "—" ? `${deliveredAt} · ${deliveredBy}` : deliveredAt) : deliveredBy;
 
         const html = `
           <div style="display:flex; align-items:flex-start; justify-content:space-between; gap: 10px;">
@@ -2146,11 +2727,14 @@
               <div style="font-weight:900; font-size:16px;">${escapeHtml(row.customer || "—")} · <span style="font-family:var(--mono)">${escapeHtml(prettyPlate(row.plate))}</span></div>
               <div class="p" style="margin-top:4px;">${escapeHtml(row.phone || "")} ${row.tire_size ? "· " + escapeHtml(row.tire_size) : ""}</div>
             </div>
-            <div class="menu" data-row-menu>
-              ${isAdmin ? `<button class="btn danger" data-row-menu-btn>Poista</button>` : ``}
-              <div class="menu-pop" id="rowMenuPop">
-                <button class="danger" id="rowSoftDel">Poista</button>
-                <button class="danger" id="rowHardDel">Poista pysyvästi</button>
+            <div style="display:flex; gap: 8px; align-items:flex-start;">
+              ${isAdmin ? `<button class="btn ghost" id="rdEdit" type="button">Muokkaa</button>` : ``}
+              <div class="menu" data-row-menu>
+                ${isAdmin ? `<button class="btn danger" data-row-menu-btn type="button">Poista</button>` : ``}
+                <div class="menu-pop" id="rowMenuPop">
+                  <button class="danger" id="rowSoftDel" type="button">Poista</button>
+                  <button class="danger" id="rowHardDel" type="button">Poista pysyvästi</button>
+                </div>
               </div>
             </div>
           </div>
@@ -2179,7 +2763,7 @@
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
             <span class="pill">Luonut: ${escapeHtml(formatActor(row.created_by_name, row.created_by_role))}</span>
             <span class="pill">Päivitetty: ${escapeHtml(formatActor(row.updated_by_name, row.updated_by_role))}</span>
-            <span class="pill">Luovutti: ${escapeHtml(formatActor(row.delivered_by_name, row.delivered_by_role))}</span>
+            ${row?.out_date ? `<span class="pill">Luovutettu: ${escapeHtml(deliveredInfo)}</span>` : ``}
           </div>
 
           <div class="field">
@@ -2214,6 +2798,14 @@
               { text: "Peruuta", kind: "ghost" },
               { text: "Poista pysyvästi", kind: "danger", onPress: () => { closeModal(); hardDeleteRow(row); } },
             ]);
+          });
+        }
+
+        const editBtn = $("#rdEdit", modalBody);
+        if (editBtn) {
+          editBtn.addEventListener("click", () => {
+            closeModal();
+            openRowEditModal(row);
           });
         }
 
@@ -2363,10 +2955,15 @@
             return Number.isFinite(s) && Number.isFinite(e) && e > startDay && s < endDay;
           });
         };
+        const isClosedBlock = (b) => {
+          const kind = String(b?.kind || b?.laji || "").trim().toLowerCase();
+          const title = String(b?.title || "").trim().toLowerCase();
+          return kind === "suljettu" || kind === "closed" || kind === "c" || title.includes("suljettu");
+        };
 
         const selectedDay = String(state.data.calendarDate || todayStrLocal());
         const selectedBlocks = dayBlocks(selectedDay);
-        const selectedClosed = selectedBlocks.length > 0;
+        const selectedClosed = selectedBlocks.some((b) => isClosedBlock(b));
         const selectedAppts = apptsByDay.get(selectedDay) || [];
 
         root.innerHTML = `
@@ -2409,7 +3006,7 @@
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;">
               ${weekDays.map((dayIso) => {
                 const dayAppts = apptsByDay.get(dayIso) || [];
-                const closed = dayBlocks(dayIso).length > 0;
+                const closed = dayBlocks(dayIso).some((b) => isClosedBlock(b));
                 const isSelected = dayIso === selectedDay;
                 return `
                   <div class="card pad" style="box-shadow:none; border-color:${isSelected ? "rgba(14, 122, 254, 0.55)" : "#e2e8f0"}; background:${isSelected ? "rgba(14, 122, 254, 0.04)" : "white"}; cursor:pointer;" data-cal-day="${escapeHtml(dayIso)}">
@@ -2537,7 +3134,7 @@
         $("#calNewAppt", root).addEventListener("click", () => {
           if (!isAdminRole(state.session.role)) return;
           const defaultStart = `${selectedDay}T08:00`;
-          const defaultEnd = `${selectedDay}T09:00`;
+          const defaultEnd = `${selectedDay}T08:20`;
           const customerNames = (state.data.customers || []).map((c) => String(c?.nimi || c?.customer || "").trim()).filter(Boolean);
           const uniquePlates = Array.from(new Set((state.data.tires || []).map((r) => normalizePlate(r?.plate)).filter(Boolean))).slice(0, 200);
 
@@ -2547,13 +3144,13 @@
               <div class="col" style="min-width:240px">
                 <div class="field" style="margin-top:10px">
                   <div class="label">Alkaa</div>
-                  <input id="apStart" type="datetime-local" value="${escapeHtml(defaultStart)}" />
+                  <input id="apStart" type="datetime-local" step="1200" value="${escapeHtml(defaultStart)}" />
                 </div>
               </div>
               <div class="col" style="min-width:240px">
                 <div class="field" style="margin-top:10px">
                   <div class="label">Päättyy</div>
-                  <input id="apEnd" type="datetime-local" value="${escapeHtml(defaultEnd)}" />
+                  <input id="apEnd" type="datetime-local" step="1200" value="${escapeHtml(defaultEnd)}" />
                 </div>
               </div>
               <div class="col" style="min-width:180px">
