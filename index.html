@@ -19,6 +19,7 @@
         --muted-border: #dbe4ee;
         --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
         --radius: 16px;
+        --frame: 1024px; /* tablet landscape frame */
         --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       }
@@ -29,6 +30,7 @@
         font-family: var(--sans);
         color: var(--text);
         background: radial-gradient(1200px 700px at 20% 0%, #ffffff 0%, var(--bg) 55%, #e6eef8 100%);
+        overflow-x: hidden;
       }
       .app { min-height: 100%; display: flex; flex-direction: column; }
       .topbar {
@@ -38,7 +40,7 @@
         border-bottom: 1px solid rgba(226, 232, 240, 0.9);
       }
       .topbar-inner {
-        max-width: 1100px; margin: 0 auto; padding: 14px 16px;
+        max-width: var(--frame); margin: 0 auto; padding: 14px 16px;
         display: flex; align-items: center; gap: 12px;
       }
       .brand { display: flex; flex-direction: column; line-height: 1.05; gap: 2px; min-width: 180px; }
@@ -71,7 +73,7 @@
       }
       .session-chip .hotel { font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .session-chip .who { font-size: 12px; color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .container { width: 100%; max-width: 1100px; margin: 0 auto; padding: 16px; flex: 1; }
+      .container { width: 100%; max-width: var(--frame); margin: 0 auto; padding: 16px; flex: 1; }
       .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
       .card.pad { padding: 14px; }
       .row { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -158,8 +160,11 @@
       .menu-pop button:hover { background: var(--muted-bg); border-color: var(--muted-border); }
       .menu-pop button.danger { color: var(--danger); }
 
+      .cal-days { display: grid; gap: 10px; grid-template-columns: repeat(var(--days, 1), minmax(0, 1fr)); }
+      .cal-day-card { min-width: 0; }
+
       .slot-row { display: flex; gap: 8px; padding: 6px 8px; align-items: flex-start; }
-      .slot-time { min-width: 92px; font-size: 11px; font-weight: 800; color: #4b5563; padding-top: 2px; }
+      .slot-time { min-width: var(--slot-time-w, 92px); font-size: 11px; font-weight: 800; color: #4b5563; padding-top: 2px; }
       .slot-tiles { flex: 1; display: flex; gap: 6px; }
       .slot-tile {
         flex: 1;
@@ -171,6 +176,8 @@
         font-weight: 800;
         color: #0f172a;
         white-space: pre-line;
+        overflow-wrap: anywhere;
+        word-break: break-word;
         cursor: pointer;
         user-select: none;
       }
@@ -946,8 +953,26 @@
 
           deleteTireWithPin: async (tireId, hotelCode, pin) => {
             const resolvedPin = resolvePin(pin);
-            const res = await request(`/rpc/soft_delete_tire_with_pin`, { method: "POST", body: { tire_id: String(tireId ?? ""), hotel_code: hotelCode, pin: resolvedPin } });
-            const out = normalizeRpcObject(res);
+            const variants = [
+              { tire_id: String(tireId ?? ""), hotel_code: hotelCode, pin: resolvedPin },
+              { p_tire_id: String(tireId ?? ""), p_hotel_code: hotelCode, p_pin: resolvedPin },
+            ];
+            let lastErr = null;
+            let out = null;
+            for (let i = 0; i < variants.length; i += 1) {
+              try {
+                const res = await request(`/rpc/soft_delete_tire_with_pin`, { method: "POST", body: variants[i] });
+                out = normalizeRpcObject(res);
+                break;
+              } catch (e) {
+                const msg = String(e?.message || "");
+                const lower = msg.toLowerCase();
+                const paramMismatch = lower.includes("missing") && lower.includes("parameter");
+                if (paramMismatch && i < variants.length - 1) { lastErr = e; continue; }
+                throw e;
+              }
+            }
+            if (out == null && lastErr) throw lastErr;
             if (out === true || out?.ok === true || out === "true") return true;
             const reason = out?.reason;
             if (reason === "wrong_pin") throw new Error("Väärä PIN.");
@@ -957,8 +982,26 @@
 
           hardDeleteTireWithPin: async (tireId, hotelCode, pin) => {
             const resolvedPin = resolvePin(pin);
-            const res = await request(`/rpc/hard_delete_tire_with_pin`, { method: "POST", body: { tire_id: String(tireId ?? ""), hotel_code: hotelCode, pin: resolvedPin } });
-            const out = normalizeRpcObject(res);
+            const variants = [
+              { tire_id: String(tireId ?? ""), hotel_code: hotelCode, pin: resolvedPin },
+              { p_tire_id: String(tireId ?? ""), p_hotel_code: hotelCode, p_pin: resolvedPin },
+            ];
+            let lastErr = null;
+            let out = null;
+            for (let i = 0; i < variants.length; i += 1) {
+              try {
+                const res = await request(`/rpc/hard_delete_tire_with_pin`, { method: "POST", body: variants[i] });
+                out = normalizeRpcObject(res);
+                break;
+              } catch (e) {
+                const msg = String(e?.message || "");
+                const lower = msg.toLowerCase();
+                const paramMismatch = lower.includes("missing") && lower.includes("parameter");
+                if (paramMismatch && i < variants.length - 1) { lastErr = e; continue; }
+                throw e;
+              }
+            }
+            if (out == null && lastErr) throw lastErr;
             if (out === true || out?.ok === true || out?.deleted === true) return true;
             const reason = out?.reason;
             if (reason === "wrong_pin") throw new Error("Väärä PIN.");
@@ -968,19 +1011,65 @@
 
           customerSoftDeleteCascadeWithPin: async (hotelCode, pin, customerId) => {
             const resolvedPin = resolvePin(pin);
-            const res = await request(`/rpc/customer_soft_delete_cascade_with_pin`, { method: "POST", body: { hotel_code: hotelCode, pin: resolvedPin, customer_id: String(customerId ?? "") } });
-            return normalizeRpcObject(res);
+            const variants = [
+              { hotel_code: hotelCode, pin: resolvedPin, customer_id: String(customerId ?? "") },
+              { p_hotel_code: hotelCode, p_pin: resolvedPin, p_customer_id: String(customerId ?? "") },
+            ];
+            let lastErr = null;
+            for (let i = 0; i < variants.length; i += 1) {
+              try {
+                const res = await request(`/rpc/customer_soft_delete_cascade_with_pin`, { method: "POST", body: variants[i] });
+                return normalizeRpcObject(res);
+              } catch (e) {
+                const msg = String(e?.message || "");
+                const lower = msg.toLowerCase();
+                const paramMismatch = lower.includes("missing") && lower.includes("parameter");
+                if (paramMismatch && i < variants.length - 1) { lastErr = e; continue; }
+                throw e;
+              }
+            }
+            throw lastErr || new Error("customer_soft_delete_cascade_with_pin epäonnistui.");
           },
 
           customerHardDeleteCascadeWithPin: async (hotelCode, pin, customerId) => {
             const resolvedPin = resolvePin(pin);
-            const res = await request(`/rpc/customer_hard_delete_cascade_with_pin`, { method: "POST", body: { hotel_code: hotelCode, pin: resolvedPin, customer_id: String(customerId ?? "") } });
-            return normalizeRpcObject(res);
+            const variants = [
+              { hotel_code: hotelCode, pin: resolvedPin, customer_id: String(customerId ?? "") },
+              { p_hotel_code: hotelCode, p_pin: resolvedPin, p_customer_id: String(customerId ?? "") },
+            ];
+            let lastErr = null;
+            for (let i = 0; i < variants.length; i += 1) {
+              try {
+                const res = await request(`/rpc/customer_hard_delete_cascade_with_pin`, { method: "POST", body: variants[i] });
+                return normalizeRpcObject(res);
+              } catch (e) {
+                const msg = String(e?.message || "");
+                const lower = msg.toLowerCase();
+                const paramMismatch = lower.includes("missing") && lower.includes("parameter");
+                if (paramMismatch && i < variants.length - 1) { lastErr = e; continue; }
+                throw e;
+              }
+            }
+            throw lastErr || new Error("customer_hard_delete_cascade_with_pin epäonnistui.");
           },
 
           listLocationsAdmin: (hotelCode) => request(`/locations?hotel_code=eq.${encodeURIComponent(hotelCode)}&select=id,code,label,shelf,row_letter,spot&order=shelf&order=row_letter&order=spot`),
 
           listFreeLocations: (hotelCode) => request(`/locations_free?hotel_code=eq.${encodeURIComponent(hotelCode)}&order=code.asc`),
+
+          isLocationTaken: async (hotelCode, locationCode, excludeTireId = null) => {
+            const code = String(hotelCode || "").trim();
+            const loc = String(locationCode || "").trim();
+            if (!code || !loc) return false;
+            const rows = await request(`/tires?hotel_code=eq.${encodeURIComponent(code)}&poistettu=eq.false&hyllypaikka=eq.${encodeURIComponent(loc)}&select=id,rekisteri,nimi,tila&limit=20`).catch(() => []);
+            const mapped = (rows || []).map(mapFromDb);
+            const occupied = mapped.filter((r) => {
+              if (!r?.id) return false;
+              if (excludeTireId != null && String(r.id) === String(excludeTireId)) return false;
+              return String(r.location || "").trim() === loc;
+            });
+            return occupied.length > 0;
+          },
 
           addLocation: (hotelCode, shelf, row_letter, spot) => request(`/locations`, { method: "POST", preferReturn: true, body: { hotel_code: hotelCode, shelf, row_letter, spot, code: `H${String(shelf).padStart(2, "0")}-${row_letter}-${String(spot).padStart(2, "0")}`, label: `Hylly ${String(shelf).padStart(2, "0")} / ${row_letter} / ${String(spot).padStart(2, "0")}` } }),
 
@@ -1220,7 +1309,9 @@
           },
 
           deleteBlock: async (hotelCode, blockId) => {
-            return request(`/calendar_blocks?id=eq.${blockId}&hotel_code=eq.${encodeURIComponent(hotelCode)}`, { method: "DELETE", preferReturn: true });
+            const rows = await request(`/calendar_blocks?id=eq.${blockId}&hotel_code=eq.${encodeURIComponent(hotelCode)}&select=id`, { method: "DELETE", preferReturn: true });
+            if (Array.isArray(rows) && rows.length > 0) return rows;
+            throw new Error("not_deleted");
           },
 
           updateBlockWithPin: async (hotelCode, pin, blockId, patch) => {
@@ -1375,7 +1466,9 @@
           },
 
           deleteAppointment: async (hotelCode, appointmentId) => {
-            return request(`/appointments?id=eq.${appointmentId}&hotel_code=eq.${encodeURIComponent(hotelCode)}`, { method: "DELETE", preferReturn: true });
+            const rows = await request(`/appointments?id=eq.${appointmentId}&hotel_code=eq.${encodeURIComponent(hotelCode)}&select=id`, { method: "DELETE", preferReturn: true });
+            if (Array.isArray(rows) && rows.length > 0) return rows;
+            throw new Error("not_deleted");
           },
 
           updateAppointmentWithPin: async (hotelCode, pin, appointmentId, patch) => {
@@ -1778,6 +1871,37 @@
         }
       }
 
+      async function takeInDeliveredRow(row) {
+        if (!isAdminRole(state.session.role)) return toast("error", "Virhe", "Ei oikeuksia.");
+        try {
+          const today = todayStrLocal();
+          const lastLoc = String(row?.last_location || "").trim();
+          if (!lastLoc) {
+            toast("error", "Virhe", "Vanha hyllypaikka puuttuu. Valitse paikka Muokkaa-näkymässä.");
+            return;
+          }
+          const taken = await api.isLocationTaken(state.session.hotelCode, lastLoc, row.id);
+          if (taken) {
+            toast("error", "Virhe", "Vanha hyllypaikka ei ole vapaa. Valitse paikka Muokkaa-näkymässä.");
+            return;
+          }
+          const patch = {
+            status: "Varastossa",
+            in_date: today,
+            out_date: null,
+            pickup_date: null,
+            location: lastLoc,
+            waiting_pickup: false,
+            working: false,
+          };
+          await api.updateTire(row.id, row.rev, patch);
+          await loadTires();
+          toast("success", "Ilmoitus", "Otettu sisään.");
+        } catch (e) {
+          toast("error", "Virhe", e?.message || "Sisäänotto epäonnistui.");
+        }
+      }
+
       async function softDeleteRow(row) {
         if (!isAdminRole(state.session.role)) return toast("error", "Virhe", "Ei oikeuksia.");
         const pin = await requirePin({ title: "Vahvista poisto", message: "Syötä admin/master PIN poistoa varten.", requireAdmin: true });
@@ -1798,6 +1922,8 @@
         try {
           await api.hardDeleteTireWithPin(row.id, state.session.hotelCode, pin);
           await loadTires();
+          const stillThere = (state.data.tires || []).some((r) => String(r?.id) === String(row?.id));
+          if (stillThere) throw new Error("Poisto ei toteutunut (rivi jäi listaan).");
           toast("success", "Ilmoitus", "Poistettu pysyvästi.");
         } catch (e) {
           toast("error", "Virhe", e?.message || "Pysyvä poisto epäonnistui.");
@@ -1826,6 +1952,8 @@
           const out = await api.customerHardDeleteCascadeWithPin(state.session.hotelCode, pin, customer.id);
           if (out?.ok !== true) throw new Error(out?.reason || "Pysyvä poisto epäonnistui.");
           await ensureLoaded();
+          const stillThere = (state.data.customers || []).some((c) => String(c?.id) === String(customer?.id));
+          if (stillThere) throw new Error("Poisto ei toteutunut (asiakas jäi listaan).");
           toast("success", "Ilmoitus", `Poistettu pysyvästi. Renkaat: ${out?.tires_deleted ?? 0}`);
         } catch (e) {
           toast("error", "Virhe", e?.message || "Pysyvä poisto epäonnistui.");
@@ -3168,6 +3296,8 @@
       function openRowDetailsModal(row) {
         const isAdmin = isAdminRole(state.session.role);
         const meta = getStatusMeta(row.status, { isWaiting: row.waiting_pickup, isWorking: row.working });
+        const statusLower = String(row?.status || "").trim().toLowerCase();
+        const isDelivered = statusLower === "luovutettu";
         const season = isSeasonPaid(row.season_fee_paid)
           ? { t: "Maksettu", bg: "#eef4ff", border: "#c7d2fe", color: "#1e429f" }
           : { t: "Maksamaton", bg: "#fff7ed", border: "#fed7aa", color: "#9a3412" };
@@ -3202,11 +3332,16 @@
 
           ${isAdmin ? `
             <div class="btn-row" style="margin-top:10px; flex-wrap:wrap;">
-              <button class="btn ghost" id="rdTogglePaid" type="button">${isSeasonPaid(row.season_fee_paid) ? "Merkitse maksamattomaksi" : "Peri kausimaksu"}</button>
-              <button class="btn ghost" id="rdPickupToday" type="button">${String(row.pickup_date || "") === todayStrLocal() ? "Nouto tänään (asetettu)" : "Nouto tänään"}</button>
-              <button class="btn ghost" id="rdClearPickup" type="button">Peru nouto</button>
-              <button class="btn primary" id="rdDeliver" type="button">Luovuta</button>
+              ${isDelivered ? `
+                <button class="btn primary" id="rdTakeIn" type="button">Ota sisään</button>
+              ` : `
+                <button class="btn ghost" id="rdTogglePaid" type="button" ${pending ? "disabled" : ""}>${isSeasonPaid(row.season_fee_paid) ? "Merkitse maksamattomaksi" : "Peri kausimaksu"}</button>
+                <button class="btn ghost" id="rdPickupToday" type="button" ${pending ? "disabled" : ""}>${String(row.pickup_date || "") === todayStrLocal() ? "Nouto tänään (asetettu)" : "Nouto tänään"}</button>
+                <button class="btn ghost" id="rdClearPickup" type="button" ${pending ? "disabled" : ""}>Peru nouto</button>
+                <button class="btn primary" id="rdDeliver" type="button" ${pending ? "disabled" : ""}>Luovuta</button>
+              `}
             </div>
+            ${pending ? `<div class="p danger-text" style="margin-top:6px;">Rivi odottaa admin-vahvistusta. Pikatoiminnot eivät ole käytössä.</div>` : ``}
           ` : ``}
 
           <div class="divider"></div>
@@ -3290,6 +3425,13 @@
             } catch (e) {
               toast("error", "Virhe", e?.message || "Tallennus epäonnistui.");
             }
+          });
+        }
+        const btnTakeIn = $("#rdTakeIn", modalBody);
+        if (btnTakeIn) {
+          btnTakeIn.addEventListener("click", async () => {
+            closeModal();
+            await takeInDeliveredRow(row);
           });
         }
         const btnPickupToday = $("#rdPickupToday", modalBody);
@@ -3445,7 +3587,7 @@
         const CALENDAR_DURATION_OPTIONS = [1, 2, 3, 4, 6];
         const CALENDAR_BAYS = [1, 2];
 
-        const isPortrait = window.innerWidth < 860;
+        const isPortrait = false; // force tablet landscape layout
         const ui = state.data.calendarUi || { viewMode: "all", singleDayIndex: 0 };
         if (!ui.viewMode) ui.viewMode = isPortrait ? "single" : "all";
 
@@ -3692,11 +3834,12 @@
               ${uniquePlates.map((p) => `<option value="${escapeHtml(p)}"></option>`).join("")}
             </datalist>
 
-            <div class="field">
-              <div class="label">Rekisteri</div>
-              <input id="apPlate" list="apPlateList" value="${escapeHtml(initial.plate)}" placeholder="ABC-123" />
-              <div class="p" id="apLocHint" style="margin:0"></div>
-            </div>
+             <div class="field">
+               <div class="label">Rekisteri</div>
+               <input id="apPlate" list="apPlateList" value="${escapeHtml(initial.plate)}" placeholder="ABC-123" />
+               <div class="p" id="apLocHint" style="margin:0"></div>
+               <div id="apAutofillHint" style="margin-top:8px;"></div>
+             </div>
             <div class="field">
               <div class="label">Asiakas</div>
               <input id="apCustomer" list="apCustomerList" value="${escapeHtml(initial.customer_name)}" placeholder="Asiakkaan nimi" />
@@ -3724,13 +3867,39 @@
             const endMin = startMin + Math.max(1, draft.durationSlots) * slotMinutes;
             $("#apTimeLabel", modalBody).textContent = `${minutesToHHMM(startMin)}-${minutesToHHMM(endMin)}`;
           };
-          const updateLocHint = () => {
-            const norm = normalizePlate($("#apPlate", modalBody).value);
-            if (!norm) { $("#apLocHint", modalBody).textContent = ""; return; }
-            const loc = plateLocationMap.get(norm) || "";
-            $("#apLocHint", modalBody).textContent = loc ? `Hyllypaikka: ${prettyLocation(loc)}` : "";
-          };
-          const setActiveButtons = () => {
+           const updateLocHint = () => {
+             const norm = normalizePlate($("#apPlate", modalBody).value);
+             if (!norm) { $("#apLocHint", modalBody).textContent = ""; return; }
+             const loc = plateLocationMap.get(norm) || "";
+             $("#apLocHint", modalBody).textContent = loc ? `Hyllypaikka: ${prettyLocation(loc)}` : "";
+           };
+           const autofill = $("#apAutofillHint", modalBody);
+           let lastAutofillKey = "";
+           function renderApAutofill(matchRow) {
+             if (!autofill) return;
+             if (!matchRow) { autofill.innerHTML = ""; return; }
+             if (initial.id) { autofill.innerHTML = ""; return; } // don't prompt on edit
+             const p = String(matchRow?.phone || "").trim();
+             const name = String(matchRow?.customer || "").trim();
+             const loc = prettyLocation(matchRow?.location) || "—";
+             const fillable = (!!name && !String($("#apCustomer", modalBody).value || "").trim()) || (!!p && !String($("#apPhone", modalBody).value || "").trim());
+             autofill.innerHTML = `
+               <div class="card pad" style="box-shadow:none; background: var(--muted-bg); border-color: var(--muted-border); padding:10px;">
+                 <div class="p" style="margin:0">Rekisteri löytyy riveistä: ${escapeHtml(name || "—")} · ${escapeHtml(p || "—")} · ${escapeHtml(loc)}</div>
+                 <div class="btn-row" style="margin-top:8px; justify-content:flex-end;">
+                   <button class="btn ghost" id="apAutoNo" type="button">Ei nyt</button>
+                   <button class="btn primary" id="apAutoFill" type="button" ${fillable ? "" : "disabled"}>Täytä</button>
+                 </div>
+               </div>
+             `;
+             $("#apAutoNo", modalBody).addEventListener("click", () => { autofill.innerHTML = ""; });
+             $("#apAutoFill", modalBody).addEventListener("click", () => {
+               if (name && !String($("#apCustomer", modalBody).value || "").trim()) $("#apCustomer", modalBody).value = name;
+               if (p && !String($("#apPhone", modalBody).value || "").trim()) $("#apPhone", modalBody).value = p;
+               autofill.innerHTML = "";
+             });
+           }
+           const setActiveButtons = () => {
             $$("[data-ap-dur]", modalBody).forEach((b) => {
               const v = parseInt(b.getAttribute("data-ap-dur"), 10);
               b.classList.toggle("primary", v === draft.durationSlots);
@@ -3746,13 +3915,23 @@
           updateTimeLabel();
           updateLocHint();
 
-          $("#apStart", modalBody).addEventListener("change", (e) => {
-            const dt = new Date(String(e.target.value || ""));
-            if (!Number.isFinite(dt.getTime())) return;
-            draft.startMs = dt.getTime();
-            updateTimeLabel();
-          });
-          $("#apPlate", modalBody).addEventListener("input", () => updateLocHint());
+           $("#apStart", modalBody).addEventListener("change", (e) => {
+             const dt = new Date(String(e.target.value || ""));
+             if (!Number.isFinite(dt.getTime())) return;
+             draft.startMs = dt.getTime();
+             updateTimeLabel();
+           });
+           $("#apPlate", modalBody).addEventListener("input", () => {
+             updateLocHint();
+             const norm = normalizePlate($("#apPlate", modalBody).value);
+             if (!norm) { lastAutofillKey = ""; renderApAutofill(null); return; }
+             const match = (state.data.tires || []).find((r) => normalizePlate(r?.plate) === norm);
+             if (!match) { lastAutofillKey = ""; renderApAutofill(null); return; }
+             const key = `${String(match?.id || "")}|${norm}`;
+             if (key === lastAutofillKey) return;
+             lastAutofillKey = key;
+             renderApAutofill(match);
+           });
           $("#apCustomer", modalBody).addEventListener("change", () => {
             const key = String($("#apCustomer", modalBody).value || "").trim();
             if (!key) return;
@@ -3881,7 +4060,13 @@
           }
           const pin = await requirePin({ title: "Vahvista poisto", message: "Syötä admin/master PIN.", requireAdmin: true });
           if (!pin) return;
-          const out = await api.deleteBlockWithPin(state.session.hotelCode, pin, block.id);
+          let out;
+          try {
+            out = await api.deleteBlockWithPin(state.session.hotelCode, pin, block.id);
+          } catch (e) {
+            toast("error", "Virhe", e?.message || "Poisto epäonnistui.");
+            return;
+          }
           if (out?.ok !== true) {
             const reason = String(out?.reason || "");
             if (reason === "wrong_pin") toast("error", "Virhe", "Väärä PIN.");
@@ -4040,21 +4225,21 @@
           </div>
         `;
 
+        const timeWidth = visibleDays.length >= 6 ? "66px" : (visibleDays.length === 5 ? "74px" : "86px");
         const gridHtml = `
           <div class="card pad" style="margin-top: 12px;">
             <div class="muted" style="font-size:13px;">
               ${isAdminRole(state.session.role) ? "Klikkaa vapaata slotia varataksesi. Oikea klikkaus lisää/muokkaa blokkia." : "Klikkaa vapaata slotia varataksesi."}
             </div>
             <div class="divider"></div>
-            <div style="overflow:auto;">
-              <div style="display:flex; gap: 10px; min-width: 840px;">
-                ${visibleDays.map((dayIso) => {
+            <div class="cal-days" style="--days:${visibleDays.length}; --slot-time-w:${timeWidth};">
+              ${visibleDays.map((dayIso) => {
                   const closed = isDayClosed(dayIso);
                   const isToday = dayIso === nowIso;
                   const isPast = dayIso < todayIso;
                   const dayBg = isPast ? "#eceff3" : (closed ? "#fff1f2" : (isToday ? "#eaf2ff" : "white"));
                   return `
-                    <div class="card pad" style="box-shadow:none; border-color:#e2e8f0; min-width:${ui.viewMode === "single" ? "520px" : "360px"}; background:${dayBg};">
+                    <div class="card pad cal-day-card" style="box-shadow:none; border-color:#e2e8f0; background:${dayBg};">
                       <div style="display:flex; align-items:center; justify-content:space-between; gap: 8px;" data-cal-day="${escapeHtml(dayIso)}">
                         <div style="font-weight:900">${escapeHtml(fiDayLabel(dayIso))}</div>
                         <div style="display:flex; gap:6px; align-items:center;">
@@ -4089,7 +4274,6 @@
                     </div>
                   `;
                 }).join("")}
-              </div>
             </div>
           </div>
         `;
