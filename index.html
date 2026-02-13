@@ -38,7 +38,7 @@
         border-bottom: 1px solid rgba(226, 232, 240, 0.9);
       }
       .topbar-inner {
-        max-width: 1100px; margin: 0 auto; padding: 14px 16px;
+        max-width: 1400px; margin: 0 auto; padding: 14px 16px;
         display: flex; align-items: center; gap: 12px;
       }
       .brand { display: flex; flex-direction: column; line-height: 1.05; gap: 2px; min-width: 180px; }
@@ -71,7 +71,7 @@
       }
       .session-chip .hotel { font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .session-chip .who { font-size: 12px; color: var(--subtext); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .container { width: 100%; max-width: 1100px; margin: 0 auto; padding: 16px; flex: 1; }
+      .container { width: 100%; max-width: 1400px; margin: 0 auto; padding: 16px; flex: 1; }
       .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
       .card.pad { padding: 14px; }
       .row { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -159,7 +159,7 @@
       .menu-pop button.danger { color: var(--danger); }
 
       .slot-row { display: flex; gap: 8px; padding: 6px 8px; align-items: flex-start; }
-      .slot-time { min-width: 92px; font-size: 11px; font-weight: 800; color: #4b5563; padding-top: 2px; }
+      .slot-time { min-width: 76px; font-size: 11px; font-weight: 800; color: #4b5563; padding-top: 2px; }
       .slot-tiles { flex: 1; display: flex; gap: 6px; }
       .slot-tile {
         flex: 1;
@@ -974,8 +974,24 @@
 
           customerHardDeleteCascadeWithPin: async (hotelCode, pin, customerId) => {
             const resolvedPin = resolvePin(pin);
-            const res = await request(`/rpc/customer_hard_delete_cascade_with_pin`, { method: "POST", body: { hotel_code: hotelCode, pin: resolvedPin, customer_id: String(customerId ?? "") } });
-            return normalizeRpcObject(res);
+            const variants = [
+              { hotel_code: hotelCode, pin: resolvedPin, customer_id: String(customerId ?? "") },
+              { p_hotel_code: hotelCode, p_pin: resolvedPin, p_customer_id: String(customerId ?? "") },
+            ];
+            let lastErr = null;
+            for (let i = 0; i < variants.length; i += 1) {
+              try {
+                const res = await request(`/rpc/customer_hard_delete_cascade_with_pin`, { method: "POST", body: variants[i] });
+                return normalizeRpcObject(res);
+              } catch (e) {
+                const msg = String(e?.message || "");
+                const lower = msg.toLowerCase();
+                const paramMismatch = lower.includes("missing") && lower.includes("parameter");
+                if (paramMismatch && i < variants.length - 1) { lastErr = e; continue; }
+                throw e;
+              }
+            }
+            throw lastErr || new Error("Pysyvä poisto epäonnistui.");
           },
 
           listLocationsAdmin: (hotelCode) => request(`/locations?hotel_code=eq.${encodeURIComponent(hotelCode)}&select=id,code,label,shelf,row_letter,spot&order=shelf&order=row_letter&order=spot`),
@@ -1220,7 +1236,9 @@
           },
 
           deleteBlock: async (hotelCode, blockId) => {
-            return request(`/calendar_blocks?id=eq.${blockId}&hotel_code=eq.${encodeURIComponent(hotelCode)}`, { method: "DELETE", preferReturn: true });
+            const rows = await request(`/calendar_blocks?id=eq.${blockId}&hotel_code=eq.${encodeURIComponent(hotelCode)}&select=id`, { method: "DELETE", preferReturn: true });
+            if (Array.isArray(rows) && rows.length > 0) return rows;
+            throw new Error("not_deleted");
           },
 
           updateBlockWithPin: async (hotelCode, pin, blockId, patch) => {
@@ -1375,7 +1393,9 @@
           },
 
           deleteAppointment: async (hotelCode, appointmentId) => {
-            return request(`/appointments?id=eq.${appointmentId}&hotel_code=eq.${encodeURIComponent(hotelCode)}`, { method: "DELETE", preferReturn: true });
+            const rows = await request(`/appointments?id=eq.${appointmentId}&hotel_code=eq.${encodeURIComponent(hotelCode)}&select=id`, { method: "DELETE", preferReturn: true });
+            if (Array.isArray(rows) && rows.length > 0) return rows;
+            throw new Error("not_deleted");
           },
 
           updateAppointmentWithPin: async (hotelCode, pin, appointmentId, patch) => {
@@ -1826,6 +1846,8 @@
           const out = await api.customerHardDeleteCascadeWithPin(state.session.hotelCode, pin, customer.id);
           if (out?.ok !== true) throw new Error(out?.reason || "Pysyvä poisto epäonnistui.");
           await ensureLoaded();
+          const stillThere = (state.data.customers || []).some((c) => String(c?.id) === String(customer?.id));
+          if (stillThere) throw new Error("Poisto ei toteutunut (asiakas jäi listaan).");
           toast("success", "Ilmoitus", `Poistettu pysyvästi. Renkaat: ${out?.tires_deleted ?? 0}`);
         } catch (e) {
           toast("error", "Virhe", e?.message || "Pysyvä poisto epäonnistui.");
@@ -3881,7 +3903,13 @@
           }
           const pin = await requirePin({ title: "Vahvista poisto", message: "Syötä admin/master PIN.", requireAdmin: true });
           if (!pin) return;
-          const out = await api.deleteBlockWithPin(state.session.hotelCode, pin, block.id);
+          let out;
+          try {
+            out = await api.deleteBlockWithPin(state.session.hotelCode, pin, block.id);
+          } catch (e) {
+            toast("error", "Virhe", e?.message || "Poisto epäonnistui.");
+            return;
+          }
           if (out?.ok !== true) {
             const reason = String(out?.reason || "");
             if (reason === "wrong_pin") toast("error", "Virhe", "Väärä PIN.");
@@ -4046,15 +4074,15 @@
               ${isAdminRole(state.session.role) ? "Klikkaa vapaata slotia varataksesi. Oikea klikkaus lisää/muokkaa blokkia." : "Klikkaa vapaata slotia varataksesi."}
             </div>
             <div class="divider"></div>
-            <div style="overflow:auto;">
-              <div style="display:flex; gap: 10px; min-width: 840px;">
+            <div>
+              <div style="display:flex; gap: 10px; width:100%;">
                 ${visibleDays.map((dayIso) => {
                   const closed = isDayClosed(dayIso);
                   const isToday = dayIso === nowIso;
                   const isPast = dayIso < todayIso;
                   const dayBg = isPast ? "#eceff3" : (closed ? "#fff1f2" : (isToday ? "#eaf2ff" : "white"));
                   return `
-                    <div class="card pad" style="box-shadow:none; border-color:#e2e8f0; min-width:${ui.viewMode === "single" ? "520px" : "360px"}; background:${dayBg};">
+                    <div class="card pad" style="box-shadow:none; border-color:#e2e8f0; min-width:${ui.viewMode === "single" ? "520px" : "0"}; flex:1; flex-basis:0; background:${dayBg};">
                       <div style="display:flex; align-items:center; justify-content:space-between; gap: 8px;" data-cal-day="${escapeHtml(dayIso)}">
                         <div style="font-weight:900">${escapeHtml(fiDayLabel(dayIso))}</div>
                         <div style="display:flex; gap:6px; align-items:center;">
